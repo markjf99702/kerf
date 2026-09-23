@@ -1,0 +1,8 @@
+{
+  "name": "kerf",
+  "private": true,
+  "description": "Cut-list optimizer for lumber and plywood",
+  "scripts": {
+    "test": "node test/solver.test.js"
+  }
+}
