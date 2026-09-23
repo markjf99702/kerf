@@ -242,6 +242,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 .note{color:var(--ink2);font-size:13.5px;margin:0}
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(16px);background:var(--ink);color:var(--ground);padding:8px 14px;border-radius:9px;font:600 13.5px var(--body);opacity:0;transition:.2s;pointer-events:none;z-index:80;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
+.lk{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:12px 14px;margin-bottom:12px}.lk b{display:block;font-size:17px}.lk ul{margin:6px 0 0;padding-left:18px;color:var(--ink2)}
 .example{display:flex;gap:10px;align-items:center;background:var(--chalk-soft);border:1px solid color-mix(in srgb,var(--chalk) 40%,var(--line));border-radius:var(--r);padding:9px 12px;font-size:14px;margin-top:14px}
 .example button{margin-left:auto;flex:none}
 @media (max-width:960px){
@@ -637,6 +638,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           var a = stocks[si], b = stocks[pickSi];
           var better = pref === 'free' ? (a.price === 0 && b.price > 0) || (a.price === b.price && a.L * a.W > b.L * b.W)
             : pref === 'big' ? a.L * a.W > b.L * b.W || (a.L * a.W === b.L * b.W && a.price < b.price)
+            : pref === 'cheap' ? a.price < b.price - 1e-9 || (Math.abs(a.price - b.price) < 1e-9 && a.L * a.W > b.L * b.W)
             : a.price / (a.L * a.W) < b.price / (b.L * b.W) - 1e-12;
           if (better) pickSi = si;
         }
@@ -667,21 +669,27 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     function keep(sortFn, fitFn, split, pref, list) {
       var r = packRun(list || items, stocks, kerf, sortFn, fitFn, split, pref);
       if (!r) return;
-      // Try each sheet on a cheaper stock size, packed on its own.
-      r.sheets.forEach(function (sh, idx) {
+      // Try each sheet's parts on a cheaper stock size, packed on their own: one smaller sheet, or
+      // several that together cost less (two half sheets can beat one full one).
+      var kept = [];
+      r.sheets.forEach(function (sh) {
+        var its = sh.placed.map(function (p) { return items.filter(function (x) { return x.pi === p.pi; })[0]; }), alt = null;
         stocks.forEach(function (st, si) {
           if (st.price >= sh.st.price - 1e-9 || r.left[si] <= 0) return;
-          var its = sh.placed.map(function (p) { return items.filter(function (x) { return x.pi === p.pi; })[0]; });
           for (var q = 0; q < SORTS.length; q++) {
-            var one = packRun(its, [Object.assign({}, st, { left: 1 })], kerf, SORTS[q], FITS[0], 'short', 'area');
-            if (one && one.sheets.length === 1) { r.left[si]--; r.left[stocks.indexOf(sh.st)]++; r.sheets[idx] = one.sheets[0]; one.sheets[0].st = st; sh = one.sheets[0]; break; }
+            var run = packRun(its, [Object.assign({}, st, { left: r.left[si] })], kerf, SORTS[q], FITS[0], 'short', 'area');
+            if (run && run.sheets.length * st.price < (alt ? alt.cost : sh.st.price) - 1e-9) alt = { si: si, st: st, sheets: run.sheets, cost: run.sheets.length * st.price };
           }
         });
+        if (!alt) { kept.push(sh); return; }
+        r.left[alt.si] -= alt.sheets.length; r.left[stocks.indexOf(sh.st)]++;
+        alt.sheets.forEach(function (x) { x.st = alt.st; kept.push(x); });
       });
+      r.sheets = kept;
       var cost = evalSheets(r.sheets), spare = r.sheets.length ? Math.max.apply(null, r.sheets.map(freeArea)) : 0;
       if (!best || cost < best.cost - 1e-6 || (Math.abs(cost - best.cost) < 1e-6 && (r.sheets.length < best.sheets.length || (r.sheets.length === best.sheets.length && spare > best.spare + 1e-6)))) best = { cost: cost, sheets: r.sheets, spare: spare };
     }
-    var prefs = stocks.some(function (s) { return s.price === 0; }) ? ['free', 'area', 'big'] : ['area', 'big'];
+    var prefs = (stocks.some(function (s) { return s.price === 0; }) ? ['free', 'area', 'big'] : ['area', 'big']).concat(stocks.length > 1 ? ['cheap'] : []);
     outer: for (var pf = 0; pf < prefs.length; pf++) for (var a = 0; a < SORTS.length; a++) for (var b = 0; b < FITS.length; b++) for (var c = 0; c < SPLITS.length; c++) {
       if (runs++ >= cap) break outer;
       keep(SORTS[a], FITS[b], SPLITS[c], prefs[pf]);
@@ -1217,27 +1225,64 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     $('pjList').parentNode.insertBefore(del, $('pjList').nextSibling);
     draw();
   }
+  // Take only what Kerf knows, as the types it expects; a hand-edited file or a link can't break the page.
+  function cleanProject(o) {
+    var p = o && (o.project || o);
+    if (!p || !Array.isArray(p.materials)) throw new Error('not a project');
+    var num = function (v, lo, hi) { v = +v; return v > lo ? Math.min(v, hi) : 0; }, str = function (v, n) { return String(v == null ? '' : v).slice(0, n); };
+    var units = p.units === 'mm' ? 'mm' : 'in', q = blankProject(units);
+    q.name = str(p.name, 80) || 'Imported project';
+    if (+p.kerf >= 0 && +p.kerf <= 1) q.kerf = +p.kerf;
+    if (+p.trim >= 0 && +p.trim <= 6) q.trim = +p.trim;
+    if (+p.keep >= 0 && +p.keep <= 240) q.keep = +p.keep;
+    if (p.cur) q.cur = str(p.cur, 3);
+    q.materials = p.materials.slice(0, 40).map(function (m) {
+      var sheet = m && m.kind === 'sheet';
+      return { id: uid(), kind: sheet ? 'sheet' : 'board', name: str(m && m.name, 60) || (sheet ? 'Sheet' : 'Board'), note: str(m && m.note, 80),
+        stock: (Array.isArray(m && m.stock) ? m.stock : []).slice(0, 20).map(function (s) { var o = { id: uid(), len: num(s && s.len, 0, 1200), price: num(s && s.price, -1, 1e5), have: Math.min(10, Math.max(0, (s && s.have) | 0)) }; if (sheet) o.wid = num(s && s.wid, 0, 1200); return o; }).filter(function (s) { return s.len > 0 && (!sheet || s.wid > 0); }),
+        parts: (Array.isArray(m && m.parts) ? m.parts : []).slice(0, 200).map(function (r) { return part(str(r && r.name, 60), Math.min(500, Math.max(0, (r && r.qty) | 0)), num(r && r.len, 0, 1200), sheet ? num(r && r.wid, 0, 1200) : null, sheet ? !!(r && r.grain) : null); }) };
+    }).filter(function (m) { return m.stock.length; });
+    return q;
+  }
+  function addProject(p) { DB.projects[p.id] = p; DB.order.unshift(p.id); DB.current = p.id; P = p; save(true); closeSheet(); applyProject(); toast('Opened “' + P.name + '”'); }
   function importText(t) {
-    try {
-      var o = JSON.parse(t), p = o && (o.project || o);
-      if (!p || !Array.isArray(p.materials)) throw 0;
-      // Take only what Kerf knows, as the types it expects; a hand-edited file can't break the page.
-      var num = function (v, lo, hi) { v = +v; return v > lo ? Math.min(v, hi) : 0; }, str = function (v, n) { return String(v == null ? '' : v).slice(0, n); };
-      var units = p.units === 'mm' ? 'mm' : 'in', q = blankProject(units);
-      q.name = str(p.name, 80) || 'Imported project';
-      if (+p.kerf >= 0 && +p.kerf <= 1) q.kerf = +p.kerf;
-      if (+p.trim >= 0 && +p.trim <= 6) q.trim = +p.trim;
-      if (+p.keep >= 0 && +p.keep <= 240) q.keep = +p.keep;
-      if (p.cur) q.cur = str(p.cur, 3);
-      q.materials = p.materials.slice(0, 40).map(function (m) {
-        var sheet = m && m.kind === 'sheet';
-        return { id: uid(), kind: sheet ? 'sheet' : 'board', name: str(m && m.name, 60) || (sheet ? 'Sheet' : 'Board'), note: str(m && m.note, 80),
-          stock: (Array.isArray(m && m.stock) ? m.stock : []).slice(0, 20).map(function (s) { var o = { id: uid(), len: num(s && s.len, 0, 1200), price: num(s && s.price, -1, 1e5), have: Math.min(10, Math.max(0, (s && s.have) | 0)) }; if (sheet) o.wid = num(s && s.wid, 0, 1200); return o; }).filter(function (s) { return s.len > 0 && (!sheet || s.wid > 0); }),
-          parts: (Array.isArray(m && m.parts) ? m.parts : []).slice(0, 200).map(function (r) { return part(str(r && r.name, 60), Math.min(500, Math.max(0, (r && r.qty) | 0)), num(r && r.len, 0, 1200), sheet ? num(r && r.wid, 0, 1200) : null, sheet ? !!(r && r.grain) : null); }) };
-      }).filter(function (m) { return m.stock.length; });
-      p = q;
-      DB.projects[p.id] = p; DB.order.unshift(p.id); DB.current = p.id; P = DB.projects[p.id]; save(true); closeSheet(); applyProject(); toast('Opened “' + P.name + '”');
-    } catch (e) { toast('That isn’t a Kerf project'); }
+    var p; try { p = cleanProject(JSON.parse(t)); } catch (e) { toast('That isn’t a Kerf project'); return; }
+    addProject(p);
+  }
+
+  // ---------- opening a project from a link ----------
+  // kerf/#k1z… carries a project as deflated JSON in base64url (#k1j… uncompressed); links from the
+  // Kerf planner skill look like this. #project=<url-encoded JSON> works too, for writing one by hand.
+  function linkText(hash) {
+    var m = /^#k1([zj])([A-Za-z0-9_-]+)$/.exec(hash || '');
+    if (m) {
+      var b = m[2].replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '=';
+      var bin = atob(b), bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (m[1] === 'j') return Promise.resolve(new TextDecoder().decode(bytes));
+      if (!window.DecompressionStream) return Promise.reject(new Error('This browser is too old to open project links — use Projects › paste instead'));
+      return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    }
+    m = /^#project=(.+)$/.exec(hash || '');
+    return Promise.resolve(m ? decodeURIComponent(m[1]) : null);
+  }
+  function linkSig(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0; return h.toString(36) + s.length.toString(36); }
+  function checkLink() {
+    var hash = location.hash; if (!/^#(k1[zj]|project=)/.test(hash)) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+    linkText(hash).then(function (t) {
+      if (!t) return;
+      var p = cleanProject(JSON.parse(t)); p.from = linkSig(hash);
+      var had = DB.order.filter(function (id) { return DB.projects[id] && DB.projects[id].from === p.from; })[0];
+      var parts = function (m) { return m.parts.reduce(function (a, q) { return a + (q.qty || 0); }, 0); };
+      openSheet('<div class="hd"><h2>Open a project from a link</h2><button class="btn sm sec" type="button" id="lkx">Not now</button></div><div class="bd">' +
+        '<div class="lk"><b>' + esc(p.name) + '</b><ul>' + p.materials.map(function (m) { return '<li>' + esc(m.name) + ' — ' + plural(parts(m), 'part') + '</li>'; }).join('') + '</ul></div>' +
+        (had ? '<p class="note">You opened this link before; your copy is still in Projects.</p><div class="row"><button class="btn tape" type="button" id="lkOpen">Open my copy</button><button class="btn sec" type="button" id="lkAdd">Add another copy</button></div>'
+          : '<div class="row"><button class="btn tape" type="button" id="lkAdd">Add to my projects</button></div><p class="note">It comes in as a new project; nothing you already have changes. Check the prices — they’re whatever the link came with.</p>') + '</div>');
+      $('lkx').addEventListener('click', closeSheet);
+      $('lkAdd').addEventListener('click', function () { addProject(p); });
+      if (had) $('lkOpen').addEventListener('click', function () { DB.current = had; P = DB.projects[had]; save(true); closeSheet(); applyProject(); });
+    }).catch(function (e) { toast(e && /browser/.test(e.message) ? e.message : 'That link doesn’t hold a Kerf project'); });
   }
 
   // ---------- shop PDF ----------
@@ -1364,6 +1409,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
   var rT; window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (Math.abs(planWidth() - W.plan) > 4) renderPlan(); }, 120); });
   applyProject();
+  checkLink();
+  window.addEventListener('hashchange', checkLink);
 })();
 </script>
 </body>

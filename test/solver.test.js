@@ -99,6 +99,14 @@ console.log('boards: a big job stays quick');
   check(r.items.reduce((a, b) => a + b.pieces.length, 0) === 90, 'big job lost pieces');
 }
 
+console.log('sheets: two half sheets beat one full sheet');
+{
+  const stock = [{ len: 96, wid: 48, price: 58, have: 0 }, { len: 48, wid: 24, price: 24, have: 0 }];
+  const parts = [{ len: 48, wid: 16, qty: 1, grain: true }, { len: 44.75, wid: 12.75, qty: 1, grain: true }];
+  const r = K.solveSheets({ stock, parts }, { kerf: 0.125 });
+  check(Math.abs(r.cost - 48) < 1e-6, `bench seat and shelf cost $${r.cost}, want $48 (two half sheets)`);
+}
+
 console.log('sheets: random jobs, every layout checked');
 {
   const R = rng(11), kerf = 0.125; let n = 0;
