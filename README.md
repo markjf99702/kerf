@@ -32,7 +32,7 @@ Settings per project: saw kerf (⅛″ by default), trimming each board end squa
 
 - several part orders, fit rules and split rules;
 - shuffled orders, for about 120 ms;
-- repacking each sheet onto a cheaper, smaller sheet size where the parts fit.
+- repacking each sheet's parts onto smaller sheet sizes when that costs less (two half sheets can beat one full one).
 
 The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing is a heuristic, not a proof: it is good, not guaranteed optimal.
 
@@ -48,6 +48,20 @@ No dependencies. The test reads the solver straight out of `index.html` and chec
 - **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths.
 - **Big jobs:** a 90-piece job finishes quickly.
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned.
+
+## Planning a build with Claude
+
+`skill/kerf-planner/` is a skill for Claude. It helps you work out a design in conversation, derives an exact cut list from actual lumber sizes and the joinery, and hands the result to Kerf as a link and a project file. To use it, zip the `kerf-planner` folder and upload it as a skill in claude.ai; it needs code execution turned on. Its script, `scripts/make_kerf.py`, also runs on its own:
+
+```
+python3 skill/kerf-planner/scripts/make_kerf.py plan.json
+```
+
+## Opening a project from a link
+
+A link like `https://markjf99702.github.io/kerf/#k1z…` carries a whole project in the part after `#`, so it never reaches a server. Opening one shows what's in it and asks before adding it as a new project. It never replaces one you have, and a link opened twice offers your existing copy.
+
+The format is the project JSON, compressed with raw DEFLATE and base64url-encoded; `#k1j…` is the same without compression. `#project=` followed by URL-encoded JSON also works, for writing a link by hand.
 
 ## Project files
 
