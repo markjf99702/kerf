@@ -1,6 +1,7 @@
 {
   "name": "kerf",
   "private": true,
+  "license": "MIT",
   "description": "Cut-list optimizer for lumber and plywood",
   "scripts": {
     "test": "node test/solver.test.js"

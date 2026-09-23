@@ -52,3 +52,7 @@ No dependencies. The test reads the solver straight out of `index.html` and chec
 ## Project files
 
 A saved project is JSON: `{"kerf": 1, "project": {…}}`. Lengths are stored in inches whatever the display units. Opening a file keeps only fields Kerf understands and clamps the numbers, so a hand-edited file can't break the page.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
