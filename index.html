@@ -268,6 +268,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 }
 @media (prefers-reduced-motion:reduce){.toast,.saw-bar .prog i,.stock>summary .chev{transition:none}}
 [hidden]{display:none!important}
+.jd-foot{text-align:center;font-size:13px;color:var(--ink2);padding:0 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.jd-foot a{color:inherit;text-underline-offset:3px}
+.jd-foot a:hover{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -295,6 +298,11 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     </section>
   </main>
 </div>
+<footer class="jd-foot">
+  <a href="https://junkdrawer.works/">Part of junkdrawer.works</a>
+  <span aria-hidden="true">·</span>
+  <a href="https://junkdrawer.works/privacy.html">Privacy</a>
+</footer>
 <div id="sheet" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
