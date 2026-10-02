@@ -26,7 +26,7 @@ checks that every part fits some stock, and exits 1 (printing why) if anything i
 import argparse, base64, json, math, re, sys, zlib
 from pathlib import Path
 
-DEFAULT_BASE = 'https://markjf99702.github.io/kerf/'
+DEFAULT_BASE = 'https://kerf.junkdrawer.works/'
 VULGAR = {'½': ' 1/2', '¼': ' 1/4', '¾': ' 3/4', '⅛': ' 1/8', '⅜': ' 3/8', '⅝': ' 5/8', '⅞': ' 7/8'}
 
 

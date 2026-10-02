@@ -46,7 +46,7 @@ Kerf ignores fields it doesn't know. It clamps out-of-range numbers and drops si
 A link is Kerf's address with the project in the fragment:
 
 ```
-https://markjf99702.github.io/kerf/#k1z<data>
+https://kerf.junkdrawer.works/#k1z<data>
 ```
 
 `<data>` is the compact JSON above, compressed with raw DEFLATE, then base64url-encoded without padding. `#k1j<data>` is the same without compression. Kerf also accepts `#project=<URL-encoded JSON>`, which can be written by hand, but it gets long.

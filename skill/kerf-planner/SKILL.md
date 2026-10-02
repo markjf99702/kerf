@@ -119,4 +119,4 @@ Keep the final message tidy:
 
 If they change the design afterwards, update the plan and run the script again. The new link comes in as a separate project, so their old one isn't overwritten.
 
-The link points at `https://markjf99702.github.io/kerf/` by default. If they use Kerf somewhere else, pass `--base` with that address.
+The link points at `https://kerf.junkdrawer.works/` by default. If they use Kerf somewhere else, pass `--base` with that address.
