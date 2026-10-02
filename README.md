@@ -2,7 +2,9 @@
 
 A cut-list optimizer for lumber and plywood. List the parts a project needs; Kerf works out the cheapest boards and sheets to buy, draws how to cut each one, and gives you a checklist to work through at the saw.
 
-It is one HTML file with no build step and no server. Open `index.html` in a browser, or host it anywhere static (GitHub Pages works).
+Use it at [junkdrawer.works/kerf](https://junkdrawer.works/kerf/). It installs as an app (from the browser's menu, or Share → Add to Home Screen on an iPhone) and works offline once it has loaded.
+
+It is one HTML file with no build step and no server. Open `index.html` in a browser, or host it anywhere static (GitHub Pages works). `manifest.webmanifest`, `icon.svg` and the `icon-*.png` sizes (`node tools/make-icons.mjs` redraws them) let it install, `sw.js` keeps the offline copy, and `og.png` is the link preview.
 
 ## What it does
 
