@@ -215,6 +215,9 @@ for (let i = 0; i < 9; i++) {
 await page.keyboard.press('Escape');
 assert.equal(await page.evaluate(() => document.activeElement.id), 'setBtn', 'focus is lost when the dialog closes');
 
+// On a phone the top bar's buttons show only their icons, but each still has a name.
+for (const name of ['Projects', 'Shop PDF', 'Settings']) assert.equal(await page.getByRole('button', { name, exact: true }).count(), 1, `no button named ${name} on a phone`);
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
