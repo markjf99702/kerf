@@ -299,11 +299,12 @@ const sawCases = [
   { trim: 0.25, parts: [{ name: 'Rail', qty: 2, len: 47 + 11 / 16 }], steps: ['Trim off 1/4" and measure every part from this fresh end', RAIL, FRESH + ' — this cut squares up the far end too'], cuts: 3, lines: 2 },
   { trim: 0.25, parts: [{ name: 'Top', qty: 1, len: 95.5 }], steps: ['Trim off 1/4" and measure every part from this fresh end', RAIL + ' — this cut squares up the far end too'], cuts: 2, lines: 1 },
   { trim: 0, parts: [{ name: 'Top', qty: 1, len: 96 }], steps: ['What’s left is this part — no cut needed'], cuts: 0, lines: 0 },
+  { trim: 0, parts: [{ name: 'Leg', qty: 1, len: 72 }], steps: [RAIL], cuts: 1, lines: 1 },
 ];
 for (const c of sawCases) {
   await open(saved(project('Saw', [board('2×4', [{ len: 96, price: 4.28 }], c.parts)], { trim: c.trim })));
   const what = `${c.parts[0].qty} × ${c.parts[0].len} on 8', trim ${c.trim}`;
-  assert.equal(await cutsFact(), c.cuts + 'cuts', what + ': cuts in the plan');
+  assert.equal(await cutsFact(), c.cuts + (c.cuts === 1 ? 'cut' : 'cuts'), what + ': cuts in the plan');
   assert.equal(await page.locator('#planOut .dg-kerf').count(), c.lines, what + ': saw cuts drawn');
   assert.equal(pdfKerfLines(await shopPdf()), c.lines, what + ': saw cuts in the PDF');
   await view('saw');

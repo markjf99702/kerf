@@ -977,7 +977,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     var h = '<div class="summary"><div><div class="total"><span class="cur">' + esc(CUR) + '</span>' + (Math.round(r.cost * 100) / 100).toFixed(2) + '</div><div class="total-lbl">to buy</div></div><div class="facts">';
     if (r.boards) h += '<div class="fact"><b>' + r.boards + '</b><span>' + (r.boards === 1 ? 'board' : 'boards') + '</span></div>';
     if (r.sheets) h += '<div class="fact"><b>' + r.sheets + '</b><span>' + (r.sheets === 1 ? 'sheet' : 'sheets') + '</span></div>';
-    h += '<div class="fact"><b>' + r.cuts + '</b><span>cuts</span></div>';
+    h += '<div class="fact"><b>' + r.cuts + '</b><span>' + (r.cuts === 1 ? 'cut' : 'cuts') + '</span></div>';
     var y = r.boards && r.sheets ? null : r.boards ? r.boardYield : r.sheetYield;
     if (y != null) h += '<div class="fact"><b>' + Math.round(y * 100) + '%</b><span>ends up as parts</span></div>';
     h += '</div>';
