@@ -54,7 +54,8 @@ const page = await ctx.newPage();
 const problems = [];
 page.on('pageerror', e => problems.push(e.message));
 page.on('console', m => { if (m.type() === 'error') problems.push(m.text()); });
-page.on('requestfailed', r => problems.push('failed: ' + r.url()));
+// A request cut short because the test moved on to another page isn't a problem; any other failure is (a missing file logs an error too).
+page.on('requestfailed', r => { if (r.failure()?.errorText !== 'net::ERR_ABORTED') problems.push('failed: ' + r.url()); });
 page.on('request', r => { const u = r.url(); if (!u.startsWith(base) && !u.startsWith('blob:')) problems.push('left the site: ' + u); });
 
 // Opens Kerf as a fresh page load, with `db` in storage (null for a first visit) and `hash` after the address.
