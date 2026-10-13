@@ -1308,7 +1308,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   function checkLink() {
     var hash = location.hash; if (!/^#(k1[zj]|project=)/.test(hash)) return;
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
-    linkText(hash).then(function (t) {
+    // linkText inside the chain, so a link cut short or badly escaped ends in the toast below too
+    Promise.resolve(hash).then(linkText).then(function (t) {
       if (!t) return;
       var p = cleanProject(JSON.parse(t)); p.from = linkSig(hash);
       var had = DB.order.filter(function (id) { return DB.projects[id] && DB.projects[id].from === p.from; })[0];

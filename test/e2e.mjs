@@ -117,6 +117,16 @@ assert.ok(await page.isHidden('#sheet'), 'Projects closes once the file is open'
 assert.equal(await page.textContent('.total'), '$70.76');
 assert.equal((await stored()).order.length, 3);
 
+// A broken link says so instead of failing quietly, and a good link after it in the same tab still opens.
+for (const bad of ['#k1zABCDE', '#project=%E0%A4%A', '#project={"name":"50% off bench"}']) {
+  await open(null, bad);
+  await page.waitForFunction(() => document.getElementById('toast').classList.contains('show'), null, { timeout: 3000 }).catch(() => {});
+  assert.equal(await page.textContent('#toast'), 'That link doesn’t hold a Kerf project', bad + ' says nothing');
+}
+await page.evaluate(hash => { location.hash = hash; }, linkTo(MUDROOM));
+await page.waitForSelector('#lkAdd', { timeout: 5000 });
+await page.click('#lkx');
+
 // Opening Kerf writes nothing until something really changes. A first visit that only looks around leaves
 // storage empty, so carry.js can still bring projects over from junkdrawer.works/kerf/ on a later visit.
 await open(null);
