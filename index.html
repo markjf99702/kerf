@@ -288,6 +288,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 .jd-foot{text-align:center;font-size:13px;color:var(--ink2);padding:0 16px calc(24px + env(safe-area-inset-bottom,0px))}
 .jd-foot a{color:inherit;text-underline-offset:3px}
 .jd-foot a:hover{color:var(--ink)}
+.noscript{margin:18px 0 0}
+@media print{.jd-foot{display:none}}
 </style>
 </head>
 <body>
@@ -302,6 +304,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     </div>
     <nav class="tabs" id="tabs" aria-label="Views"><button type="button" data-t="list">Cut list</button><button type="button" data-t="plan">Plan</button><button type="button" data-t="saw">At the saw</button></nav>
   </header>
+  <noscript><p class="empty noscript">Kerf needs JavaScript to work out what to buy and how to cut it.</p></noscript>
   <div id="exampleBar"></div>
   <main class="work">
     <section class="pane list" aria-label="Cut list">

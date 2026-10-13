@@ -1,5 +1,5 @@
 // Checks Kerf's optimizer against brute force, and every sheet layout for overlaps.
-// Run with: node test/solver.test.js   (no dependencies)
+// Run with: node test/solver.test.cjs   (no dependencies)
 'use strict';
 const fs = require('fs');
 const path = require('path');

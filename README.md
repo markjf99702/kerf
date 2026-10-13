@@ -44,7 +44,7 @@ The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing
 npm test
 ```
 
-That runs two suites. `test/solver.test.js` needs no dependencies: it reads the solver straight out of `index.html` and checks:
+That runs two suites. `test/solver.test.cjs` needs no dependencies: it reads the solver straight out of `index.html` and checks:
 
 - **Parsing:** lengths in each format parse to the right value.
 - **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths. Boards on hand that run short are reported, not left to crash.

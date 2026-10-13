@@ -322,6 +322,19 @@ await page.click('#setBtn');
 assert.ok(await page.$eval('#uSeg', seg => seg.getBoundingClientRect().width <= [...seg.children].reduce((w, b) => w + b.getBoundingClientRect().width, 0) + 4), 'the units switch stretches across Settings');
 await page.keyboard.press('Escape');
 
+// Printed, the page leaves out the junkdrawer.works footer; with JavaScript off, it says what it needs it for.
+await page.emulateMedia({ media: 'print' });
+assert.ok(await page.isHidden('.jd-foot'), 'the footer prints');
+await page.emulateMedia({ media: null });
+{
+  const off = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  const p = await off.newPage();
+  await p.goto(base);
+  assert.equal(await p.locator('.noscript').textContent().catch(() => null), 'Kerf needs JavaScript to work out what to buy and how to cut it.');
+  assert.ok(await p.isVisible('.noscript'));
+  await off.close();
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
