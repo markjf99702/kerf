@@ -277,6 +277,12 @@ for (const [typed, shown] of [['4,28', '€4.28'], ['1.234,50', '€1234.50'], [
   assert.match(await page.textContent('details.stock .chips'), new RegExp(shown.replace('.', '\\.')), `a price typed as ${typed}`);
 }
 
+// The plan says why parts are left out: too big for any size listed, or more than the stock on hand can hold.
+await open(saved(project('Left out', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 4, len: 72 }]),
+  sheet('¾ plywood', [{ len: 96, wid: 48, have: 1 }], [{ name: 'Shelf', qty: 3, len: 90, wid: 40 }]),
+  board('4×4', [{ len: 96, price: 11.98 }], [{ name: 'Post', qty: 1, len: 120 }])])));
+assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¾ plywood: these parts don’t fit together on any stock listed; 4×4 has 1 part too big for any size listed — see the cut list.');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

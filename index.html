@@ -983,9 +983,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     h += '</div>';
     if (r.boards && !r.sheets) h += '<div class="yield" role="img" aria-label="' + Math.round(r.boardYield * 100) + '% parts, ' + Math.round(r.boardKerf * 100) + '% sawdust, the rest offcuts"><i style="width:' + (r.boardYield * 100).toFixed(1) + '%"></i><i class="k" style="width:' + (r.boardKerf * 100).toFixed(1) + '%"></i></div><div class="ylegend"><span>parts</span><span class="k">saw kerf</span><span class="w">offcuts</span></div>';
     if (r.sheets && !r.boards) h += '<div class="yield" role="img" aria-label="' + Math.round(r.sheetYield * 100) + '% of the sheet area becomes parts"><i style="width:' + (r.sheetYield * 100).toFixed(1) + '%"></i></div>';
-    h += '</div><div class="tips" id="tips"></div>';
-    var errs = r.mats.filter(function (m) { return m.errors.length; });
-    if (errs.length) h += '<div class="warn"><b>Some parts are left out.</b> ' + errs.map(function (m) { return esc(m.mat.name) + ' has ' + plural(m.errors.length, 'part') + ' too big for any size listed'; }).join('; ') + ' — see the cut list.</div>';
+    h += '</div><div class="tips" id="tips"></div>' + leftOut(r);
     h += '<div class="sec"><div class="sec-hd"><h3>Shopping list</h3><button class="lbtn" type="button" id="copyList">Copy as text</button></div><div class="shop"><table><thead><tr><th>Qty</th><th>What</th><th style="text-align:right">Each</th><th style="text-align:right">Total</th></tr></thead><tbody>';
     r.mats.forEach(function (m) {
       if (!m.items.length) return;
@@ -1002,6 +1000,14 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     host.innerHTML = h;
     $('copyList').addEventListener('click', copyList);
     renderTips();
+  }
+  // Why parts are missing from the plan: too big for any size listed, or more than the stock on hand can hold.
+  function leftOut(r) {
+    var errs = r.mats.filter(function (m) { return m.errors.length; });
+    return errs.length ? '<div class="warn"><b>Some parts are left out.</b> ' + errs.map(function (m) {
+      var big = m.errors.filter(function (e) { return e.pi >= 0; }).length, rest = big < m.errors.length;
+      return esc(m.mat.name) + (big ? ' has ' + plural(big, 'part') + ' too big for any size listed' + (rest ? ', and the rest don’t fit together on the stock listed' : '') : ': these parts don’t fit together on any stock listed');
+    }).join('; ') + ' — see the cut list.</div>' : '';
   }
   function shopLines(m) {
     var map = {}, lines = [];
