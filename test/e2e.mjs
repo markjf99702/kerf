@@ -172,6 +172,13 @@ assert.deepEqual(await page.$$eval('#sheet .btn', bs => [...new Set(bs.map(b => 
 await page.click('#pjx');
 assert.equal(await page.$eval('#planOut div.sec', d => getComputedStyle(d).marginTop), '22px');
 
+// A board you already have is labelled "yours" inside its drawing, not cut off past the edge.
+await open(saved(project('Yours', [board('2×4', [{ len: 96, price: 4.28 }, { len: 96, have: 1 }], [{ name: 'Leg', qty: 3, len: 72 }])])));
+assert.ok(await page.evaluate(() => {
+  const svg = document.querySelector('#planOut svg.diag'), yours = [...svg.querySelectorAll('text')].find(t => t.textContent === 'yours');
+  return yours.getBoundingClientRect().right <= svg.getBoundingClientRect().right + 0.5;
+}), '"yours" runs past the drawing');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

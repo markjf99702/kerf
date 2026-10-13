@@ -1043,7 +1043,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     return s;
   }
   function boardDiagram(m) {
-    var width = W.plan, labelW = 40, rightW = 0, maxLen = Math.max.apply(null, m.items.map(function (b) { return b.stock.len; }));
+    var width = W.plan, labelW = 40, maxLen = Math.max.apply(null, m.items.map(function (b) { return b.stock.len; }));
+    var rightW = m.items.some(function (b) { return b.stock.have; }) ? 44 : 0; // room for "yours" after a board you have
     var drawW = width - labelW - rightW, px = drawW / maxLen, rowH = 34, gap = 22, top = 24, H = top + m.items.length * (rowH + gap) - gap + 6;
     var s = '<svg class="diag" viewBox="0 0 ' + width + ' ' + H + '" role="img" aria-label="' + esc(m.mat.name) + ' cutting diagram">' + tapeRuler(labelW, drawW, maxLen, 2);
     m.items.forEach(function (b, bi) {
