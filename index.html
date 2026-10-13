@@ -589,6 +589,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       var lf = fresh(), b = greedy(C0.slice(), lf, [], 0.35, 0.5);
       consider(b && settle(b, lf));
     }
+    // Nothing worked: the boards on hand run out and there's no size to buy.
+    if (!best) { out.errors.push({ pi: -1 }); return out; }
     var queues = lens.map(function (g) { return g.q.slice(); });
     out.cost = best.cost;
     out.items = best.boards.map(function (b) {

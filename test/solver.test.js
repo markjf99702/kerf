@@ -67,6 +67,16 @@ console.log('boards: the example project');
   check(Math.abs(r.cost - 42.64) < 1e-6, `garage shelves 2×4s cost $${r.cost.toFixed(2)}, want $42.64`);
 }
 
+console.log('boards: on-hand boards that run short');
+{
+  // Only two boards on hand and nothing to buy: three legs can't all be cut, and the plan has to say so.
+  let r = null;
+  try { r = K.solveBoards({ stock: [{ len: 96, price: 0, have: 2 }], parts: [{ len: 72, qty: 3 }] }, { kerf: 0.125, trim: 0 }); } catch (e) { check(false, 'have 2 for 3 legs threw: ' + e.message); }
+  if (r) check(r.items.length === 0 && r.errors.length === 1 && r.errors[0].pi === -1, 'have 2 for 3 legs: ' + JSON.stringify(r.errors));
+  r = K.solveBoards({ stock: [{ len: 96, price: 0, have: 3 }], parts: [{ len: 72, qty: 3 }] }, { kerf: 0.125, trim: 0 });
+  check(r.items.length === 3 && r.cost === 0 && !r.errors.length, 'have 3 for 3 legs uses all three, free');
+}
+
 console.log('boards: random jobs against brute force (offcuts on hand, end trim, two kerfs)');
 {
   const R = rng(17); let n = 0;
