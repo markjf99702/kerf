@@ -861,7 +861,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         h += '<div class="srow" data-sid="' + s.id + '"><input class="mono" data-f="slen" value="' + esc(fmt(s.len, { ft: !sheet })) + '" aria-label="Stock length" autocomplete="off">' +
           (sheet ? '<input class="mono" data-f="swid" value="' + esc(fmt(s.wid)) + '" aria-label="Stock width" autocomplete="off">' : '') +
           '<span class="money"><span>' + esc(CUR) + '</span><input class="mono" data-f="price" value="' + (s.have ? '' : (+s.price || 0).toFixed(2)) + '" inputmode="decimal" aria-label="Price" autocomplete="off"' + (s.have ? ' disabled placeholder="free"' : '') + '></span>' +
-          '<select data-f="have" aria-label="Where it comes from"><option value="0"' + (s.have ? '' : ' selected') + '>Buy</option>' + [1, 2, 3, 4, 5, 6, 8, 10].map(function (n) { return '<option value="' + n + '"' + (s.have === n ? ' selected' : '') + '>Have ' + n + '</option>'; }).join('') + '</select>' +
+          '<select data-f="have" aria-label="Where it comes from"><option value="0"' + (s.have ? '' : ' selected') + '>Buy</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<option value="' + n + '"' + (s.have === n ? ' selected' : '') + '>Have ' + n + '</option>'; }).join('') + '</select>' +
           '<button class="icon" type="button" data-a="delstock" aria-label="Remove this size">✕</button></div>';
       });
       h += '<div class="addrow"><button class="lbtn" type="button" data-a="addstock">+ Size to buy</button><button class="lbtn" type="button" data-a="addhave">+ Offcut I already have</button></div>' +

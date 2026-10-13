@@ -158,6 +158,14 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   assert.equal(await page.evaluate(() => localStorage.getItem('kerf.v1')), null, 'leaving the page saved the example');
 }
 
+// The Source menu offers every count on hand from 1 to 10, the range a planner link can carry.
+await open(saved(project('Offcuts', [board('2×4', [{ len: 96, price: 4.28 }, { len: 40, have: 7 }], [{ name: 'Leg', qty: 2, len: 30 }])])));
+await view('list');
+await page.click('details.stock summary');
+const source = page.locator('.srow[data-sid] select').nth(1);
+assert.equal(await source.inputValue(), '7', 'seven on hand shows as Buy');
+assert.deepEqual(await source.locator('option').evaluateAll(os => os.map(o => o.value)), ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
