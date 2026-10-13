@@ -1,10 +1,12 @@
 // Offline support: keep a copy of the app so it works with no signal.
-// Projects live in localStorage, not here. The fonts come from Google, so offline the page falls back to the system's.
+// Projects live in localStorage, not here.
 // Network first, so a new version shows up as soon as you're online.
 
-const CACHE = 'kerf-v2'; // bump the number when the file list changes
+const CACHE = 'kerf-v3'; // bump the number when the file list changes
 const SHELL = [
   './', 'index.html', 'carry.js', 'icon.svg', 'icon-180.png', 'icon-192.png', 'manifest.webmanifest',
+  'fonts/barlow-400.woff2', 'fonts/barlow-500.woff2', 'fonts/barlow-600.woff2', 'fonts/barlow-700.woff2',
+  'fonts/big-shoulders-stencil-800.woff2', 'fonts/jetbrains-mono.woff2',
 ];
 
 self.addEventListener('install', e => {

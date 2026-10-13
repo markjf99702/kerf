@@ -4,7 +4,7 @@ A cut-list optimizer for lumber and plywood. List the parts a project needs; Ker
 
 Use it at [kerf.junkdrawer.works](https://kerf.junkdrawer.works/). It installs as an app (from the browser's menu, or Share → Add to Home Screen on an iPhone) and works offline once it has loaded.
 
-It is one HTML file with no build step and no server. Open `index.html` in a browser, or host it anywhere static (GitHub Pages works). `manifest.webmanifest`, `icon.svg` and the `icon-*.png` sizes (`node tools/make-icons.mjs` redraws them) let it install, `sw.js` keeps the offline copy, and `og.png` is the link preview.
+It is one HTML file with no build step and no server. Open `index.html` in a browser, or host it anywhere static (GitHub Pages works). `manifest.webmanifest`, `icon.svg` and the `icon-*.png` sizes (`node tools/make-icons.mjs` redraws them) let it install, `sw.js` keeps the offline copy, and `og.png` is the link preview. The fonts in `fonts/` (Barlow, Big Shoulders Stencil and JetBrains Mono, SIL Open Font License) are served from here so nothing loads from elsewhere.
 
 ## What it does
 
