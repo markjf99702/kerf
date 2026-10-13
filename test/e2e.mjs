@@ -109,7 +109,7 @@ assert.equal(await cuts.nth(2).getAttribute('aria-checked'), 'true');
 // A link from the kerf-planner skill shows what's in it and comes in as a new project once you say so.
 await open(null, linkTo(MUDROOM));
 await page.waitForSelector('#lkAdd');
-assert.match(await page.textContent('#sheet .lk'), /Mudroom bench\s*2×4 — 8 parts\s*¾ plywood — 1 part/);
+assert.match(await page.textContent('#sheet .lk'), /Mudroom bench\s*2×4 — 8 pieces\s*¾ plywood — 1 piece/, 'the link counts pieces, as Projects counts parts');
 assert.equal(await page.evaluate(() => location.hash), '', 'the project leaves the address bar');
 await page.click('#lkAdd');
 assert.equal(await page.inputValue('#pname'), 'Mudroom bench');

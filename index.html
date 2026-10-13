@@ -1359,9 +1359,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       if (!t) return;
       var p = cleanProject(JSON.parse(t)); p.from = linkSig(hash);
       var had = DB.order.filter(function (id) { return DB.projects[id] && DB.projects[id].from === p.from; })[0];
-      var parts = function (m) { return m.parts.reduce(function (a, q) { return a + (q.qty || 0); }, 0); };
+      var pieces = function (m) { return m.parts.reduce(function (a, q) { return a + (q.qty || 0); }, 0); };
       openSheet('<div class="hd"><h2>Open a project from a link</h2><button class="btn sm sec" type="button" id="lkx">Not now</button></div><div class="bd">' +
-        '<div class="lk"><b>' + esc(p.name) + '</b><ul>' + p.materials.map(function (m) { return '<li>' + esc(m.name) + ' — ' + plural(parts(m), 'part') + '</li>'; }).join('') + '</ul></div>' +
+        '<div class="lk"><b>' + esc(p.name) + '</b><ul>' + p.materials.map(function (m) { return '<li>' + esc(m.name) + ' — ' + plural(pieces(m), 'piece') + '</li>'; }).join('') + '</ul></div>' +
         (had ? '<p class="note">You opened this link before; your copy is still in Projects.</p><div class="row"><button class="btn tape" type="button" id="lkOpen">Open my copy</button><button class="btn sec" type="button" id="lkAdd">Add another copy</button></div>'
           : '<div class="row"><button class="btn tape" type="button" id="lkAdd">Add to my projects</button></div><p class="note">It comes in as a new project; nothing you already have changes. Check the prices — they’re whatever the link came with.</p>') + '</div>');
       $('lkx').addEventListener('click', closeSheet);
