@@ -448,13 +448,16 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   // Nothing is written until something really changes; which view is showing (`view`) doesn't count until
   // this browser keeps projects. So a first visit that only looks around leaves storage empty, and carry.js
   // can still bring projects over from junkdrawer.works/kerf/ on a later visit.
-  var saveT;
+  var saveT, pending = false;
   function save(now, view) {
     if (view && !kept) return;
     clearTimeout(saveT);
-    var go = function () { kept = true; try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { } };
-    if (now) go(); else saveT = setTimeout(go, 350);
+    var go = function () { pending = false; kept = true; try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { } };
+    if (now) go(); else { pending = true; saveT = setTimeout(go, 350); }
   }
+  // When the page is hidden or closed, a save still waiting for typing to stop is written straight away.
+  // Only then: a tab that changed nothing mustn't write its copy over what another tab has saved since.
+  function flush() { if (pending) save(true); }
   function touch() { P.updated = Date.now(); save(); }
 
   // ---------- boards: one-dimensional cutting ----------
@@ -1446,6 +1449,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   });
   document.querySelectorAll('#tabs button,#rseg button').forEach(function (b) { b.addEventListener('click', function () { setTab(b.dataset.t); }); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); });
   var rT; window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (Math.abs(planWidth() - W.plan) > 4) renderPlan(); }, 120); });
   applyProject();
   checkLink();

@@ -143,6 +143,21 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   assert.equal('doneKey' in (await stored()).projects[p.id], false, 'opening a project saved it');
 }
 
+// Saving waits a moment for typing to stop, but an edit made just before the page closes is still kept.
+{
+  const p = project('Quick', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);
+  await open(saved(p));
+  await page.evaluate(() => { const i = document.getElementById('pname'); i.value = 'Renamed just now'; i.dispatchEvent(new Event('input', { bubbles: true })); location.reload(); }).catch(() => {});
+  await page.waitForLoadState('load');
+  await page.waitForSelector('#planOut > *', { state: 'attached' });
+  assert.equal(await page.inputValue('#pname'), 'Renamed just now', 'an edit right before a reload was lost');
+  // Leaving with nothing waiting to save writes nothing, so a first visit still leaves storage empty.
+  await open(null);
+  await page.reload();
+  await page.waitForSelector('#planOut > *', { state: 'attached' });
+  assert.equal(await page.evaluate(() => localStorage.getItem('kerf.v1')), null, 'leaving the page saved the example');
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
