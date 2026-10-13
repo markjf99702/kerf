@@ -283,6 +283,14 @@ await open(saved(project('Left out', [board('2×4', [{ len: 96, price: 4.28 }], 
   board('4×4', [{ len: 96, price: 11.98 }], [{ name: 'Post', qty: 1, len: 120 }])])));
 assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¾ plywood: these parts don’t fit together on any stock listed; 4×4 has 1 part too big for any size listed — see the cut list.');
 
+// An empty plan points to the cut list (a phone has no left side), and when every part is left out it says why.
+await open(saved(project('Nothing yet', [])));
+assert.match(await page.textContent('#planOut .empty'), /^Nothing to cut yet\.Add a material in the cut list, then the parts you need from it/);
+await open(saved(project('Too long', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Beam', qty: 1, len: 120 }])])));
+assert.equal(await page.textContent('#planOut'), 'Some parts are left out. 2×4 has 1 part too big for any size listed — see the cut list.');
+await open(saved(project('Short of legs', [board('Other board', [{ len: 96, have: 2 }], [{ name: 'Leg', qty: 3, len: 72 }])])));
+assert.equal(await page.textContent('#planOut'), 'Some parts are left out. Other board: these parts don’t fit together on any stock listed — see the cut list.');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

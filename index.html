@@ -970,7 +970,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   function renderPlan() {
     var host = $('planOut'), r = RES;
     if (!P.materials.length || !r.mats.some(function (m) { return m.items.length; })) {
-      host.innerHTML = '<div class="empty"><b>Nothing to cut yet.</b><br>Add a material on the left, then the parts you need from it — Kerf works out what to buy and how to cut it.</div>';
+      host.innerHTML = leftOut(r) || '<div class="empty"><b>Nothing to cut yet.</b><br>Add a material in the cut list, then the parts you need from it — Kerf works out what to buy and how to cut it.</div>';
       return;
     }
     W.plan = planWidth();
