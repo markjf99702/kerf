@@ -1334,9 +1334,48 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     H: '278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584'
   };
   Object.keys(FW).forEach(function (k) { FW[k] = FW[k].split(',').map(Number); });
-  var WINANSI = { 8216: 145, 8217: 146, 8220: 147, 8221: 148, 8226: 149, 8211: 150, 8212: 151, 8230: 133, 215: 215, 8594: 187, 8242: 39, 8243: 34 };
-  function pdfStr(s) { var o = ''; for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); c = WINANSI[c] || c; if (c > 255 || (c > 126 && c < 160 && !(c >= 133 && c <= 151))) c = 63; var ch = String.fromCharCode(c); o += ch === '(' || ch === ')' || ch === '\\' ? '\\' + ch : ch; } return o; }
-  function textW(f, size, s) { var w = 0, m = FW[f]; for (var i = 0; i < s.length; i++) { var c = s[i].normalize('NFD').charCodeAt(0); w += c >= 32 && c <= 126 ? m[c - 32] : 556; } return w * size / 1000; }
+  var WINANSI = { 8364: 128, 8216: 145, 8217: 146, 8220: 147, 8221: 148, 8226: 149, 8211: 150, 8212: 151, 8230: 133, 215: 215, 8594: 187, 8242: 39, 8243: 34 };
+  // Widths of the other characters Kerf prints, from the same fonts: … ‘ ’ “ ” • – — · » ¼ ½ ¾ ×
+  var FW2 = {
+    HB: { 133: 1000, 145: 278, 146: 278, 147: 500, 148: 500, 149: 350, 150: 556, 151: 1000, 183: 278, 187: 556, 188: 834, 189: 834, 190: 834, 215: 584 },
+    H: { 133: 1000, 145: 222, 146: 222, 147: 333, 148: 333, 149: 350, 150: 556, 151: 1000, 183: 278, 187: 556, 188: 834, 189: 834, 190: 834, 215: 584 }
+  };
+  // The code for a character in the PDF's fonts (WinAnsi), or -1 for one they can't show, such as an emoji: those are left out.
+  function winAnsi(ch) { var u = ch.codePointAt(0); return WINANSI[u] || ((u >= 32 && u <= 126) || (u >= 160 && u <= 255) ? u : -1); }
+  function pdfStr(s) { var o = ''; Array.from(s).forEach(function (ch) { var c = winAnsi(ch); if (c < 0) return; var b = String.fromCharCode(c); o += b === '(' || b === ')' || b === '\\' ? '\\' + b : b; }); return o; }
+  function textW(f, size, s) {
+    var w = 0;
+    Array.from(s).forEach(function (ch) {
+      var c = winAnsi(ch); if (c < 0) return;
+      if (c >= 192) c = ch.normalize('NFD').charCodeAt(0); // an accented letter is as wide as its letter
+      w += c >= 32 && c <= 126 ? FW[f][c - 32] : FW2[f][c] || 556;
+    });
+    return w * size / 1000;
+  }
+  // `s` cut short with an ellipsis to fit `maxW` points.
+  function fitText(f, size, s, maxW) {
+    if (textW(f, size, s) <= maxW) return s;
+    var cs = Array.from(s);
+    while (cs.length && textW(f, size, cs.join('') + '…') > maxW) cs.pop();
+    return cs.join('').replace(/\s+$/, '') + '…';
+  }
+  // `items` joined by `sep` into lines no wider than `maxW`; an item too long for a line of its own wraps at its spaces.
+  function pdfLines(f, size, items, sep, maxW) {
+    var lines = [], cur = '';
+    items.forEach(function (it) {
+      if (cur && textW(f, size, cur + sep + it) <= maxW) { cur += sep + it; return; }
+      if (cur) lines.push(cur);
+      cur = '';
+      if (textW(f, size, it) <= maxW) { cur = it; return; }
+      it.split(' ').forEach(function (word) {
+        if (cur && textW(f, size, cur + ' ' + word) <= maxW) { cur += ' ' + word; return; }
+        if (cur) lines.push(cur);
+        cur = fitText(f, size, word, maxW);
+      });
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
   function num(x) { return String(Math.round(x * 100) / 100); }
   function makePdf() {
     var PW = 612, PH = 792, M = 40, pages = [], ops = null, y = 0;
@@ -1348,15 +1387,16 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     function line(x1, y1, x2, y2, c, lw, dash) { ops.push(col(c) + ' RG ' + num(lw) + ' w ' + (dash ? '[3 2] 0 d ' : '') + num(x1) + ' ' + Y(y1) + ' m ' + num(x2) + ' ' + Y(y2) + ' l S' + (dash ? ' [] 0 d' : '')); }
     function need(h) { if (y + h > PH - M) newPage(); }
     newPage();
+    var tot = money(RES.cost), totW = textW('HB', 22, tot);
     rect(M, y, 58, 22, '#F2C200'); text('HB', 15, M + 8, y + 16, 'KERF');
-    text('HB', 16, M + 70, y + 16, P.name);
+    text('HB', 16, M + 70, y + 16, fitText('HB', 16, P.name, PW - M - totW - 16 - (M + 70))); // stops short of the total
     text('H', 9, M + 70, y + 29, 'Kerf ' + fmt(P.kerf) + (P.trim ? ' · trim ' + fmt(P.trim) + ' per end' : '') + ' · ' + new Date().toLocaleDateString());
-    var tot = money(RES.cost); text('HB', 22, PW - M - textW('HB', 22, tot), y + 18, tot); text('H', 8, PW - M - textW('H', 8, 'TO BUY'), y + 29, 'TO BUY', '#80878E');
+    text('HB', 22, PW - M - totW, y + 18, tot); text('H', 8, PW - M - textW('H', 8, 'TO BUY'), y + 29, 'TO BUY', '#80878E');
     y += 46;
     text('HB', 10, M, y, 'SHOPPING LIST', '#80878E'); y += 8;
     RES.mats.forEach(function (m) {
       if (!m.items.length) return;
-      need(30); y += 12; text('HB', 11, M, y, m.mat.name + (m.mat.note ? '  (' + m.mat.note + ')' : ''));
+      need(30); y += 12; text('HB', 11, M, y, fitText('HB', 11, m.mat.name + (m.mat.note ? '  (' + m.mat.note + ')' : ''), PW - 2 * M));
       shopLines(m).forEach(function (l) { need(14); y += 14; text('H', 10.5, M + 12, y, l.n + ' ×  ' + l.dims.replace(' x ', ' × ') + (l.have ? '   (already have)' : '')); if (!l.have) { var t = money(l.price * l.n); text('H', 10.5, PW - M - textW('H', 10.5, t), y, t); } });
     });
     y += 8; line(M, y, PW - M, y, '#B9BFB7', 0.6); y += 14; text('HB', 11, M, y, 'Total'); text('HB', 11, PW - M - textW('HB', 11, tot), y, tot); y += 16;
@@ -1365,7 +1405,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       var width = PW - 2 * M;
       // keep the heading with the first diagram
       var first = m.kind === 'sheet' ? Math.min(width / m.items[0].L, 250 / m.items[0].W) * m.items[0].W + 60 : 50;
-      need(24 + Math.min(first, PH - 2 * M - 24)); y += 18; text('HB', 12, M, y, m.mat.name + (m.kind === 'sheet' ? ' — sheets' : ' — boards')); y += 6;
+      need(24 + Math.min(first, PH - 2 * M - 24)); y += 18; text('HB', 12, M, y, fitText('HB', 12, m.mat.name, width - textW('HB', 12, ' — sheets')) + (m.kind === 'sheet' ? ' — sheets' : ' — boards')); y += 6;
       if (m.kind === 'board') {
         var maxLen = Math.max.apply(null, m.items.map(function (b) { return b.stock.len; })), lw = 44, px = (width - lw) / maxLen;
         m.items.forEach(function (b, bi) {
@@ -1381,8 +1421,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           });
           var rest = x + b.stock.len * px - cx - b.trim * px; if (rest > 0.5) { rect(cx, y, rest, 24, '#CDD2CA'); var t = fmt(b.offcut); if (textW('H', 7.5, t) < rest - 4) text('H', 7.5, cx + (rest - textW('H', 7.5, t)) / 2, y + 15, t, '#50575E'); }
           y += 34;
-          var parts = b.pieces.map(function (p) { var q = m.mat.parts[p.pi]; return letter(p.pi) + ' ' + (q && q.name ? q.name + ' ' : '') + fmt(p.len); }).join('   ·   ');
-          text('H', 8, M + lw, y, parts.length > 150 ? parts.slice(0, 147) + '...' : parts, '#50575E');
+          var parts = b.pieces.map(function (p) { var q = m.mat.parts[p.pi]; return letter(p.pi) + ' ' + (q && q.name ? q.name + ' ' : '') + fmt(p.len); });
+          pdfLines('H', 8, parts, '   ·   ', width - lw).forEach(function (l, i) { if (i) { need(10); y += 10; } text('H', 8, M + lw, y, l, '#50575E'); });
         });
       } else {
         m.items.forEach(function (sh, si) {
@@ -1407,15 +1447,15 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           rect(M, y, sh.L * px, H, null, '#9E7F52', 0.8);
           y += H + 4;
           steps.forEach(function (st, k) {
-            need(12); y += 12;
-            var part = st.gives ? m.mat.parts[st.gives.it.pi] : null;
-            text('H', 9, M, y, (k + 1) + '.  ' + (st.type === 'rip' ? 'Rip ' : 'Crosscut ') + st.on + ' at ' + fmt(st.at) + (st.gives ? '  »  ' + letter(st.gives.it.pi) + (part && part.name ? ' ' + part.name : '') : ''));
+            var part = st.gives ? m.mat.parts[st.gives.it.pi] : null, no = (k + 1) + '.  ', ind = textW('H', 9, no);
+            var s = (st.type === 'rip' ? 'Rip ' : 'Crosscut ') + st.on + ' at ' + fmt(st.at) + (st.gives ? '  »  ' + letter(st.gives.it.pi) + (part && part.name ? ' ' + part.name : '') : '');
+            pdfLines('H', 9, s.split(' '), ' ', width - ind).forEach(function (l, i) { need(12); y += i ? 11 : 12; text('H', 9, M + (i ? ind : 0), y, i ? l : no + l); });
           });
         });
       }
       need(16); y += 16;
-      var legend = m.mat.parts.map(function (p, i) { return letter(i) + ' ' + (p.name || 'Part') + ' ' + (m.kind === 'sheet' ? fmt(p.len) + ' × ' + fmt(p.wid) : fmt(p.len)) + '  ×' + p.qty; }).join('    ');
-      text('H', 8, M, y, legend.length > 160 ? legend.slice(0, 157) + '...' : legend, '#50575E');
+      var legend = m.mat.parts.map(function (p, i) { return letter(i) + ' ' + (p.name || 'Part') + ' ' + (m.kind === 'sheet' ? fmt(p.len) + ' × ' + fmt(p.wid) : fmt(p.len)) + '  ×' + p.qty; });
+      pdfLines('H', 8, legend, '    ', width).forEach(function (l, i) { if (i) { need(11); y += 11; } text('H', 8, M, y, l, '#50575E'); });
     });
     // assemble
     var objs = [], kids = [];

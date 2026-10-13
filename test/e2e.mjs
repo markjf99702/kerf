@@ -76,6 +76,12 @@ async function shopPdf() {
   return (await readFile(await dl.path())).toString('latin1');
 }
 const pdfKerfLines = pdf => (pdf.match(/0\.14 0\.38 0\.8 RG 1 w [\d. ]+ m [\d. ]+ l S/g) || []).length; // solid blue: a board's saw cuts
+// The PDF's lines of text, and how wide each is in Helvetica (the widths Kerf's own table uses, by character code).
+const pdfRuns = pdf => [...pdf.matchAll(/BT \/(F1|F2) ([\d.]+) Tf [\d. ]+ rg ([\d.-]+) ([\d.-]+) Td \(((?:\\.|[^\\)])*)\) Tj ET/g)]
+  .map(m => ({ bold: m[1] === 'F1', size: +m[2], x: +m[3], y: +m[4], text: m[5].replace(/\\(.)/g, '$1') }));
+const kerfSource = await readFile(join(root, 'index.html'), 'utf8');
+const HELVETICA = { true: kerfSource.match(/HB: '([\d,]+)'/)[1].split(',').map(Number), false: kerfSource.match(/\bH: '([\d,]+)'/)[1].split(',').map(Number) };
+const pdfWidth = r => [...r.text].reduce((w, ch) => { const c = ch.charCodeAt(0); return w + (c >= 32 && c <= 126 ? HELVETICA[r.bold][c - 32] : { 128: 556, 133: 1000, 151: 1000, 215: 584, 183: 278 }[c] || 1000); }, 0) * r.size / 1000;
 
 // A first visit opens the example: the legs, rails and shelves cost $100.64.
 await open(null);
@@ -178,6 +184,23 @@ assert.ok(await page.evaluate(() => {
   const svg = document.querySelector('#planOut svg.diag'), yours = [...svg.querySelectorAll('text')].find(t => t.textContent === 'yours');
   return yours.getBoundingClientRect().right <= svg.getBoundingClientRect().right + 0.5;
 }), '"yours" runs past the drawing');
+
+// The shop PDF keeps everything on the page: a long project name stops short of the total, a board's parts and the
+// legend wrap onto more lines instead of running off (and losing parts), and an emoji is left out, not printed as "??".
+{
+  const name = 'Workshop wall cabinet with sliding doors, French cleats and a tool shelf';
+  const parts = [['Stile, left and right', 2, 30], ['Top rail with a groove', 1, 22.5], ['Bottom rail with a groove', 1, 22.5], ['Shelf cleat, short', 4, 9.75], ['Shelf cleat, long', 2, 21.25],
+    ['French cleat for the wall', 1, 24], ['French cleat for the cabinet', 1, 24], ['Door stop block', 4, 3.5], ['Drawer runner 🪵', 2, 18], ['Back slat, tongue and groove', 3, 30]];
+  await open(saved(project(name, [board('1×4 board', [{ len: 96, price: 5.48 }], parts.map(([name, qty, len]) => ({ name, qty, len })))], { cur: '€' })));
+  const runs = pdfRuns(await shopPdf()), total = await page.textContent('.total');
+  const title = runs.find(r => r.bold && r.size === 16), sum = runs.find(r => r.bold && r.size === 22);
+  assert.equal(sum.text, total.replace('€', '\x80'), 'the total, with the euro sign in the PDF\'s own encoding');
+  assert.ok(title.x + pdfWidth(title) < sum.x - 6, 'the project name runs under the total');
+  for (const r of runs) assert.ok(r.x + pdfWidth(r) <= 612 - 40 + 0.5, `"${r.text}" runs past the right margin`);
+  assert.ok(!runs.some(r => r.text.includes('?')), 'something printed as "?"');
+  const all = runs.map(r => r.text).join(' ');
+  for (const [i, [name, qty]] of parts.entries()) assert.ok(all.includes(`${'ABCDEFGHIJ'[i]} ${name.replace(' 🪵', '')} `) && all.includes(`×${qty}`), `part ${'ABCDEFGHIJ'[i]} is missing from the legend`);
+}
 
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
