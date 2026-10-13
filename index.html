@@ -441,14 +441,18 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   }
 
   // ---------- storage (this browser only; projects export as files) ----------
-  var LS = 'kerf.v1', DB = { projects: {}, order: [], current: null, tab: 'plan', rtab: 'plan' };
-  try { var raw = localStorage.getItem(LS), o = raw && JSON.parse(raw); if (o && o.projects && o.order && o.order.length) DB = Object.assign(DB, o); } catch (e) { }
+  var LS = 'kerf.v1', DB = { projects: {}, order: [], current: null, tab: 'plan', rtab: 'plan' }, kept = false;
+  try { var raw = localStorage.getItem(LS), o = raw && JSON.parse(raw); if (o && o.projects && o.order && o.order.length) { DB = Object.assign(DB, o); kept = true; } } catch (e) { }
   var P = DB.projects[DB.current];
   if (!P) { var ex = sampleProject(); DB.projects[ex.id] = ex; DB.order = [ex.id].concat(DB.order.filter(function (id) { return DB.projects[id]; })); DB.current = ex.id; P = ex; }
+  // Nothing is written until something really changes; which view is showing (`view`) doesn't count until
+  // this browser keeps projects. So a first visit that only looks around leaves storage empty, and carry.js
+  // can still bring projects over from junkdrawer.works/kerf/ on a later visit.
   var saveT;
-  function save(now) {
+  function save(now, view) {
+    if (view && !kept) return;
     clearTimeout(saveT);
-    var go = function () { try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { } };
+    var go = function () { kept = true; try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { } };
     if (now) go(); else saveT = setTimeout(go, 350);
   }
   function touch() { P.updated = Date.now(); save(); }
@@ -1170,8 +1174,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   }
 
   // ---------- views ----------
-  function setTab(t) {
-    DB.tab = t; if (t !== 'list') DB.rtab = t; save();
+  function setTab(t, quiet) {
+    DB.tab = t; if (t !== 'list') DB.rtab = t; if (!quiet) save(false, true);
     $('app').dataset.tab = t;
     document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
     document.querySelectorAll('#rseg button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === DB.rtab); });
@@ -1185,7 +1189,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     ex.innerHTML = P.example ? '<div class="example"><span>This is an example project — change anything, or start your own.</span><button class="btn sm" type="button" id="exNew">New project</button></div>' : '';
     if (P.example) $('exNew').addEventListener('click', function () { newProject(); });
   }
-  function applyProject() { U = P.units || 'in'; CUR = P.cur || '$'; renderHead(); renderList(); resolve(); setTab(DB.tab || 'plan'); }
+  function applyProject() { U = P.units || 'in'; CUR = P.cur || '$'; renderHead(); renderList(); resolve(); setTab(DB.tab || 'plan', true); }
 
   // ---------- sheets (dialogs) ----------
   function openSheet(html) { var s = $('sheet'); s.innerHTML = '<div class="sheetbg"><div class="sheet" role="dialog" aria-modal="true">' + html + '</div></div>'; s.hidden = false; s.querySelector('.sheetbg').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeSheet(); }); return s.querySelector('.sheet'); }

@@ -117,6 +117,22 @@ assert.ok(await page.isHidden('#sheet'), 'Projects closes once the file is open'
 assert.equal(await page.textContent('.total'), '$70.76');
 assert.equal((await stored()).order.length, 3);
 
+// Opening Kerf writes nothing until something really changes. A first visit that only looks around leaves
+// storage empty, so carry.js can still bring projects over from junkdrawer.works/kerf/ on a later visit.
+await open(null);
+for (const t of ['list', 'saw', 'plan']) await view(t);
+await page.waitForTimeout(600);
+assert.equal(await page.evaluate(() => localStorage.getItem('kerf.v1')), null, 'opening Kerf and looking around saved the example');
+await page.fill('#pname', 'My shelves');
+await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1')), null, { timeout: 3000 });
+// A project already here isn't written back just by opening it.
+{
+  const p = project('Opened', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);
+  await open(saved(p));
+  await page.waitForTimeout(600);
+  assert.equal('doneKey' in (await stored()).projects[p.id], false, 'opening a project saved it');
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
