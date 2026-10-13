@@ -45,6 +45,7 @@ let ids = 0;
 const id = () => 'e2e' + ids++;
 const project = (name, materials, extra = {}) => ({ id: id(), name, units: 'in', kerf: 0.125, trim: 0, keep: 12, cur: '$', updated: Date.now(), materials, done: {}, ...extra });
 const board = (name, stock, parts) => ({ id: id(), kind: 'board', name, note: '', stock: stock.map(s => ({ id: id(), price: 0, have: 0, ...s })), parts: parts.map(p => ({ id: id(), ...p })) });
+const sheet = (name, stock, parts) => ({ id: id(), kind: 'sheet', name, note: '', stock: stock.map(s => ({ id: id(), price: 0, have: 0, ...s })), parts: parts.map(p => ({ id: id(), grain: true, ...p })) });
 const saved = (...projects) => ({ projects: Object.fromEntries(projects.map(p => [p.id, p])), order: projects.map(p => p.id), current: projects[0].id, tab: 'plan', rtab: 'plan' });
 
 const browser = await pw.chromium.launch();
@@ -227,6 +228,28 @@ await page.focus('#sawReset');
 await page.keyboard.press('Enter');
 assert.equal(await page.evaluate(() => document.activeElement.dataset.k), '0.0', 'focus after Start over');
 assert.match(await page.textContent('.saw-bar b'), /^0 \//);
+
+// A tip does what it says even when it's tapped while Kerf is still looking for new tips after an edit (a slow
+// sheet job keeps it looking for a while). Side by side on a wide screen, so the edit and the tap are quick.
+{
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const cabinet = sheet('¾ plywood', [{ len: 96, wid: 48, price: 58 }, { len: 48, wid: 48, price: 34 }, { len: 48, wid: 24, price: 21 }], [
+    { name: 'Side', qty: 4, len: 34.5, wid: 23.25 }, { name: 'Top & bottom', qty: 2, len: 30, wid: 23.25 }, { name: 'Stretcher', qty: 4, len: 30, wid: 4, grain: false },
+    { name: 'Shelf', qty: 6, len: 28.5, wid: 11.25 }, { name: 'Door', qty: 2, len: 33, wid: 15.75 }, { name: 'Drawer side', qty: 8, len: 15, wid: 6, grain: false }]);
+  const studs = board('2×4', [{ len: 96, price: 4.28 }, { len: 120, price: 6.38 }, { len: 144, price: 7.68 }, { len: 192, price: 10.98 }],
+    [{ name: 'Leg', qty: 4, len: 72 }, { name: 'Front & back rail', qty: 8, len: 48 }, { name: 'Side rail', qty: 8, len: 21 }]);
+  await open(saved(project('Tips', [cabinet, studs])));
+  await page.waitForSelector('[data-tip]', { timeout: 30000 });
+  assert.equal(await page.textContent('[data-tip]'), 'Use 47 15/16"');
+  await page.evaluate(() => { window.redrawn = new Promise(done => new MutationObserver((m, o) => { o.disconnect(); done(); }).observe(document.getElementById('planOut'), { childList: true })); });
+  await page.fill('.prow[data-pid] input[data-f="pname"] >> nth=0', 'Side panel');
+  await page.evaluate(() => window.redrawn);
+  await page.waitForTimeout(150);
+  await page.click('[data-tip]');
+  await page.waitForFunction(() => [...document.querySelectorAll('.prow[data-pid]')].some(r => r.querySelector('[data-f="pname"]').value === 'Front & back rail' && r.querySelector('[data-f="len"]').value === '47 15/16"'), null, { timeout: 3000 })
+    .catch(() => assert.fail('a tip tapped while tips were being checked did nothing'));
+  await page.setViewportSize({ width: 390, height: 844 });
+}
 
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.

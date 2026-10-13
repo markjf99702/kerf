@@ -789,9 +789,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     RES = { mats: mats, cost: cost, boards: boards, sheets: sheets, cuts: cuts, boardYield: stockLen ? partLen / stockLen : 0, boardKerf: stockLen ? kerfLen / stockLen : 0, sheetYield: sheetArea ? partArea / sheetArea : 0 };
     return RES;
   }
-  // Would shaving a hair off one part buy less material? Checked quietly after each change.
+  // Would shaving a hair off one part buy less material? Checked quietly after each change. The tips on
+  // screen stay until this check is done, then TIPS is replaced in one go.
   function findTips(gen) {
-    TIPS = [];
+    var found = [];
     var jobs = [], deltas = U === 'mm' ? [1, 2, 3, 5].map(function (d) { return d / 25.4; }) : [1 / 16, 1 / 8, 3 / 16, 1 / 4];
     P.materials.forEach(function (m, mi) {
       var base = RES.mats[mi]; if (!base || !base.items.length || m.parts.length > 16) return;
@@ -810,11 +811,11 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           var v = p[j.dim] - deltas[d]; if (v <= 0) break;
           var clone = Object.assign({}, m, { parts: m.parts.map(function (q, k) { return k === j.pi ? Object.assign({}, q, (function () { var o = {}; o[j.dim] = v; return o; })()) : q; }) });
           var r = solveMat(clone, true);
-          if (!r.errors.length && r.cost < j.base - 0.005) { TIPS.push({ mi: j.mi, pid: p.id, dim: j.dim, from: p[j.dim], to: v, save: j.base - r.cost, name: p.name, mat: m.name }); break; }
+          if (!r.errors.length && r.cost < j.base - 0.005) { found.push({ mi: j.mi, pid: p.id, dim: j.dim, from: p[j.dim], to: v, save: j.base - r.cost, name: p.name, mat: m.name }); break; }
         }
       }
       if (i < jobs.length) setTimeout(step, 0);
-      else if (gen === GEN) { TIPS.sort(function (a, b) { return b.save - a.save; }); renderTips(); }
+      else if (gen === GEN) { TIPS = found.sort(function (a, b) { return b.save - a.save; }); renderTips(); }
     })();
   }
   var solveT;
@@ -1013,13 +1014,16 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   }
   function renderTips() {
     var el = $('tips'); if (!el) return;
-    el.innerHTML = TIPS.slice(0, 3).map(function (t, i) {
+    var shown = TIPS.slice(0, 3);
+    el.innerHTML = shown.map(function (t, i) {
       return '<div class="tip"><span class="tag">TIP</span><span>Make <b>' + esc(t.name || 'that part') + '</b> ' + fmtH(t.to) + ' instead of ' + fmtH(t.from) + (t.dim === 'wid' ? ' wide' : '') + ' and the ' + esc(t.mat) + ' costs <b>' + esc(money(t.save)) + ' less</b>.</span><button class="btn sm sec" type="button" data-tip="' + i + '">Use ' + esc(fmt(t.to)) + '</button></div>';
     }).join('');
     el.querySelectorAll('[data-tip]').forEach(function (b) {
+      var t = shown[+b.dataset.tip]; // the tip this button shows, whatever the next check finds
       b.addEventListener('click', function () {
-        var t = TIPS[+b.dataset.tip], m = P.materials[t.mi], p = m && m.parts.filter(function (q) { return q.id === t.pid; })[0];
-        if (!p) return; p[t.dim] = t.to; touch(); renderList(); resolve(); toast((p.name || 'Part') + ' is now ' + fmt(t.to) + (t.dim === 'wid' ? ' wide' : ''));
+        var m = P.materials[t.mi], p = m && m.parts.filter(function (q) { return q.id === t.pid; })[0];
+        if (!p || Math.abs(p[t.dim] - t.from) > 1e-9) return; // that part has changed since
+        p[t.dim] = t.to; touch(); renderList(); resolve(); toast((p.name || 'Part') + ' is now ' + fmt(t.to) + (t.dim === 'wid' ? ' wide' : ''));
       });
     });
   }
@@ -1195,7 +1199,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     ex.innerHTML = P.example ? '<div class="example"><span>This is an example project — change anything, or start your own.</span><button class="btn sm" type="button" id="exNew">New project</button></div>' : '';
     if (P.example) $('exNew').addEventListener('click', function () { newProject(); });
   }
-  function applyProject() { U = P.units || 'in'; CUR = P.cur || '$'; renderHead(); renderList(); resolve(); setTab(DB.tab || 'plan', true); }
+  function applyProject() { U = P.units || 'in'; CUR = P.cur || '$'; TIPS = []; renderHead(); renderList(); resolve(); setTab(DB.tab || 'plan', true); }
 
   // ---------- sheets (dialogs) ----------
   // A dialog is named by its heading and takes the keyboard: the page behind it is inert while it's open,
