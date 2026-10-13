@@ -41,15 +41,17 @@ The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing
 ## Tests
 
 ```
-node test/solver.test.js
+npm test
 ```
 
-No dependencies. The test reads the solver straight out of `index.html` and checks:
+That runs two suites. `test/solver.test.js` needs no dependencies: it reads the solver straight out of `index.html` and checks:
 
 - **Parsing:** lengths in each format parse to the right value.
-- **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths.
+- **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths. Boards on hand that run short are reported, not left to crash.
 - **Big jobs:** a 90-piece job finishes quickly.
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned.
+
+`test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill, ticks cuts at the saw and reloads, and checks that nothing scrolls sideways, nothing loads from elsewhere, and it still opens offline.
 
 ## Planning a build with Claude
 

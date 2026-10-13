@@ -4,6 +4,6 @@
   "license": "MIT",
   "description": "Cut-list optimizer for lumber and plywood",
   "scripts": {
-    "test": "node test/solver.test.js"
+    "test": "node test/solver.test.js && node test/e2e.mjs"
   }
 }
