@@ -317,6 +317,11 @@ await view('list');
   assert.deepEqual([await qty.inputValue(), await qty.evaluate(e => e.classList.contains('bad'))], ['500', false]);
 }
 
+// The units switch in Settings is as wide as its two buttons, not the whole dialog.
+await page.click('#setBtn');
+assert.ok(await page.$eval('#uSeg', seg => seg.getBoundingClientRect().width <= [...seg.children].reduce((w, b) => w + b.getBoundingClientRect().width, 0) + 4), 'the units switch stretches across Settings');
+await page.keyboard.press('Escape');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
