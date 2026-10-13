@@ -251,6 +251,22 @@ assert.match(await page.textContent('.saw-bar b'), /^0 \//);
   await page.setViewportSize({ width: 390, height: 844 });
 }
 
+// Deleting takes two separate taps: a double tap only asks.
+{
+  const keep = project('Keep me', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);
+  const other = project('Other', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }]), board('1×4 board', [{ len: 96, price: 5.48 }], [{ name: 'Slat', qty: 2, len: 30 }])]);
+  await open(saved(keep, other));
+  await view('list');
+  await page.dblclick('[data-a="delmat"] >> nth=0');
+  assert.equal(await page.locator('#mats .mat').count(), 1, 'a double tap removed a material');
+  await page.click('#projBtn');
+  await page.dblclick('#sheet .btn.danger');
+  assert.equal(await page.locator('#sheet .pitem').count(), 2, 'a double tap deleted the project');
+  await page.waitForTimeout(600);
+  await page.click('#sheet .btn.danger');
+  assert.deepEqual((await stored()).order, [other.id], 'a second tap a moment later deletes it');
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

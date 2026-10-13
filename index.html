@@ -930,7 +930,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     var rows = document.querySelectorAll('[data-mid="' + m.id + '"] .prow[data-pid]'), r = rows[rows.length - 1];
     if (r) (r.querySelector('[data-f="' + (focusField === 'len' || focusField === 'wid' || focusField === 'qty' ? focusField : 'pname') + '"]') || r.querySelector('input')).focus();
   }
-  var armed = null;
+  // Removing something with parts in it takes two taps; the second must come a moment after the first,
+  // so a double tap only asks.
+  var armed = null, armedAt = 0;
   function onClick(e) {
     var b = e.target.closest('button'); if (!b) return;
     if (b.dataset.add) {
@@ -952,7 +954,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     }
     else if (a === 'delstock') { var st = findStock(m, b); if (m.stock.length < 2) { toast('Keep at least one size — change its length instead'); return; } m.stock.splice(m.stock.indexOf(st), 1); touch(); renderList(); resolve(); }
     else if (a === 'delmat') {
-      if (m.parts.some(function (p) { return p.len > 0; }) && armed !== b) { armed = b; b.textContent = 'Remove?'; b.style.width = 'auto'; b.style.padding = '0 8px'; b.style.color = 'var(--bad)'; setTimeout(function () { if (armed === b) { armed = null; if (b.isConnected) { b.textContent = '✕'; b.removeAttribute('style'); } } }, 3000); return; }
+      if (m.parts.some(function (p) { return p.len > 0; }) && armed !== b) { armed = b; armedAt = Date.now(); b.textContent = 'Remove?'; b.style.width = 'auto'; b.style.padding = '0 8px'; b.style.color = 'var(--bad)'; setTimeout(function () { if (armed === b) { armed = null; if (b.isConnected) { b.textContent = '✕'; b.removeAttribute('style'); } } }, 3000); return; }
+      if (armed === b && Date.now() - armedAt < 500) return;
       armed = null; P.materials.splice(P.materials.indexOf(m), 1); touch(); renderList(); resolve();
     }
   }
@@ -1281,9 +1284,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     $('pjPaste').addEventListener('change', function () { if (this.value.trim()) importText(this.value); });
     $('pjx').addEventListener('click', closeSheet);
     // delete, two taps
-    var del = document.createElement('button'); del.className = 'btn sec danger sm'; del.type = 'button'; del.textContent = 'Delete this project';
+    var del = document.createElement('button'), delAt = 0; del.className = 'btn sec danger sm'; del.type = 'button'; del.textContent = 'Delete this project';
     del.addEventListener('click', function () {
-      if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Tap again to delete “' + P.name + '”'; return; }
+      if (del.dataset.armed !== '1') { del.dataset.armed = '1'; delAt = Date.now(); del.textContent = 'Tap again to delete “' + P.name + '”'; return; }
+      if (Date.now() - delAt < 500) return; // a double tap only asks
       delete DB.projects[P.id]; DB.order = DB.order.filter(function (id) { return id !== P.id && DB.projects[id]; });
       if (!DB.order.length) { var ex = sampleProject(); ex.example = true; DB.projects[ex.id] = ex; DB.order = [ex.id]; }
       DB.current = DB.order[0]; P = DB.projects[DB.current]; save(true); closeSheet(); applyProject(); toast('Deleted');
