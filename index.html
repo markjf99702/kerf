@@ -1115,6 +1115,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         }
       });
       sh.spare.forEach(function (f) { var w = f.w * px, h = f.h * px; if (w > 90 && h > 18) s += '<text class="dg-scrapt" x="' + (ox + f.x * px + w / 2).toFixed(1) + '" y="' + (oy + f.y * px + h / 2).toFixed(1) + '" text-anchor="middle">' + esc(fmt(f.w) + ' × ' + fmt(f.h)) + '</text>'; });
+      s += '<rect class="dg-pedge" x="' + ox + '" y="' + oy + '" width="' + (sh.L * px).toFixed(1) + '" height="' + H.toFixed(1) + '"/>'; // under the cuts and their numbers
       sh.steps.forEach(function (st, k) {
         if (st.type === 'none') return;
         var l = st.line, x1 = ox + l[0] * px, y1 = oy + l[1] * px, x2 = ox + l[2] * px, y2 = oy + l[3] * px;
@@ -1126,7 +1127,6 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         var l = st.line, cx = ox + (l[0] + l[2]) / 2 * px, cy = oy + (l[1] + l[3]) / 2 * px;
         s += '<circle class="dg-num" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="8"/><text class="dg-numt" x="' + cx.toFixed(1) + '" y="' + cy.toFixed(1) + '">' + n + '</text>';
       });
-      s += '<rect class="dg-pedge" x="' + ox + '" y="' + oy + '" width="' + (sh.L * px).toFixed(1) + '" height="' + H.toFixed(1) + '"/>';
       out += s + '</svg>';
       var steps = sh.steps.filter(function (x) { return x.type !== 'none'; });
       if (steps.length) out += '<ol class="steps">' + steps.map(function (st, k) { return '<li><b>' + (k + 1) + '</b><span>' + stepText(st, m) + '</span></li>'; }).join('') + '</ol>';
@@ -1475,6 +1475,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
             var t = letter(p.pi); if (w > 16 && h > 12) text('HB', 9, x + (w - textW('HB', 9, t)) / 2, yy + h / 2 + (w > 70 && h > 26 ? -2 : 3), t, '#2E220F');
             var d = fmt(p.l) + ' × ' + fmt(p.w); if (w > 70 && h > 26 && textW('H', 7.5, d) < w - 4) text('H', 7.5, x + (w - textW('H', 7.5, d)) / 2, yy + h / 2 + 9, d, '#2E220F');
           });
+          rect(M, y, sh.L * px, H, null, '#9E7F52', 0.8); // under the cuts and their numbers
           var n = 0;
           sh.steps.forEach(function (st) {
             if (st.type === 'none') return; n++;
@@ -1482,7 +1483,6 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
             var cx = M + (l[0] + l[2]) / 2 * px, cy = y + (l[1] + l[3]) / 2 * px, t = String(n);
             rect(cx - 6, cy - 6, 12, 12, '#2361CC'); text('HB', 7.5, cx - textW('HB', 7.5, t) / 2, cy + 2.7, t, '#FFFFFF');
           });
-          rect(M, y, sh.L * px, H, null, '#9E7F52', 0.8);
           y += H + 4;
           steps.forEach(function (st, k) {
             var part = st.gives ? m.mat.parts[st.gives.it.pi] : null, no = (k + 1) + '.  ', ind = textW('H', 9, no);

@@ -291,6 +291,17 @@ assert.equal(await page.textContent('#planOut'), 'Some parts are left out. 2×4 
 await open(saved(project('Short of legs', [board('Other board', [{ len: 96, have: 2 }], [{ name: 'Leg', qty: 3, len: 72 }])])));
 assert.equal(await page.textContent('#planOut'), 'Some parts are left out. Other board: these parts don’t fit together on any stock listed — see the cut list.');
 
+// A sheet's outline goes under its cut lines and numbers, not through them, on screen and in the PDF.
+await open(null);
+assert.ok(await page.evaluate(() => {
+  const svg = [...document.querySelectorAll('#planOut svg.diag')].find(d => d.querySelector('.dg-num')), els = [...svg.children];
+  return els.indexOf(svg.querySelector('rect.dg-pedge')) < els.indexOf(svg.querySelector('.dg-cut'));
+}), 'the sheet outline is drawn over its cut numbers');
+{
+  const pdf = await shopPdf(), outline = pdf.search(/0\.62 0\.5 0\.32 RG 0\.8 w [\d. ]+ re S/);
+  assert.ok(outline > 0 && outline < pdf.indexOf('0.14 0.38 0.8 RG 1 w [3 2] 0 d'), 'the PDF draws the sheet outline over its cut numbers');
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
