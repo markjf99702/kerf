@@ -218,6 +218,16 @@ assert.equal(await page.evaluate(() => document.activeElement.id), 'setBtn', 'fo
 // On a phone the top bar's buttons show only their icons, but each still has a name.
 for (const name of ['Projects', 'Shop PDF', 'Settings']) assert.equal(await page.getByRole('button', { name, exact: true }).count(), 1, `no button named ${name} on a phone`);
 
+// Ticking a cut from the keyboard keeps focus on that cut, and Start over moves it to the first one.
+await view('saw');
+await page.locator('#sawOut .cut[data-k]').nth(1).focus();
+await page.keyboard.press('Space');
+assert.deepEqual(await page.evaluate(() => [document.activeElement.dataset.k, document.activeElement.getAttribute('aria-checked')]), ['0.1', 'true'], 'focus left the cut just ticked');
+await page.focus('#sawReset');
+await page.keyboard.press('Enter');
+assert.equal(await page.evaluate(() => document.activeElement.dataset.k), '0.0', 'focus after Start over');
+assert.match(await page.textContent('.saw-bar b'), /^0 \//);
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

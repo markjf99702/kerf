@@ -1173,8 +1173,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       h += '</div>';
     });
     host.innerHTML = h;
-    host.querySelectorAll('.cut[data-k]').forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.k; if (P.done[k]) delete P.done[k]; else P.done[k] = 1; save(); renderSaw(); }); });
-    var rs = $('sawReset'); if (rs) rs.addEventListener('click', function () { P.done = {}; save(); renderSaw(); });
+    // The list is drawn again after each tick, so focus goes back to the same cut (or the first, after Start over).
+    var refocus = function (k) { var c = host.querySelector('.cut[data-k' + (k ? '="' + k + '"' : '') + ']'); if (c) c.focus({ preventScroll: true }); };
+    host.querySelectorAll('.cut[data-k]').forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.k; if (P.done[k]) delete P.done[k]; else P.done[k] = 1; save(); renderSaw(); refocus(k); }); });
+    var rs = $('sawReset'); if (rs) rs.addEventListener('click', function () { P.done = {}; save(); renderSaw(); refocus(); });
   }
 
   // ---------- views ----------
