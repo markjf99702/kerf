@@ -306,6 +306,17 @@ assert.ok(await page.evaluate(() => {
 await open(saved(project('Offcut', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 1, len: 72 }])])));
 assert.deepEqual(await page.$$eval('#planOut .dg-scrapt', ts => ts.map(t => [t.textContent, t.getBBox().width <= t.previousElementSibling.width.baseVal.value - 2])), [['23 7/8"', true]], 'the offcut label');
 
+// Kerf plans up to 500 of a part: a bigger quantity is marked, and becomes 500 when you leave the field.
+await open(saved(project('Pegs', [board('1×2', [{ len: 96, price: 2.98 }], [{ name: 'Peg', qty: 2, len: 3 }])])));
+await view('list');
+{
+  const qty = page.locator('.prow[data-pid] input[data-f="qty"]');
+  await qty.fill('600');
+  assert.ok(await qty.evaluate(e => e.classList.contains('bad')), '600 isn\'t marked');
+  await qty.blur();
+  assert.deepEqual([await qty.inputValue(), await qty.evaluate(e => e.classList.contains('bad'))], ['500', false]);
+}
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';

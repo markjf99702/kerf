@@ -895,7 +895,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     var p = findPart(m, el), s = findStock(m, el), v;
     if (p) {
       if (f === 'pname') p.name = el.value;
-      else if (f === 'qty') { v = parseInt(el.value, 10); el.classList.toggle('bad', !!el.value.trim() && !(v > 0)); p.qty = v > 0 ? Math.min(v, 500) : 0; }
+      else if (f === 'qty') { v = parseInt(el.value, 10); el.classList.toggle('bad', !!el.value.trim() && !(v > 0 && v <= 500)); p.qty = v > 0 ? Math.min(v, 500) : 0; }
       else if (f === 'len' || f === 'wid') { v = parseLen(el.value); el.classList.toggle('bad', !!el.value.trim() && !(v > 0)); p[f] = v > 0 ? v : 0; }
     } else if (s) {
       if (f === 'slen' || f === 'swid') { v = parseLen(el.value); el.classList.toggle('bad', !(v > 0)); if (v > 0) s[f === 'slen' ? 'len' : 'wid'] = v; }
@@ -915,6 +915,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     var m = findMat(el); if (!m) return;
     var p = findPart(m, el), s = findStock(m, el);
     if (p && (f === 'len' || f === 'wid') && p[f] > 0) el.value = fmt(p[f]);
+    if (p && f === 'qty' && p.qty > 0 && el.value.trim() !== String(p.qty)) { el.value = p.qty; el.classList.remove('bad'); } // 600 becomes the 500 planned
     if (s && (f === 'slen' || f === 'swid')) el.value = fmt(f === 'slen' ? s.len : s.wid, { ft: f === 'slen' && m.kind === 'board' });
     if (s && f === 'price' && !s.have) el.value = (+s.price || 0).toFixed(2);
   }
