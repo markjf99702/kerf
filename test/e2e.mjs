@@ -166,6 +166,12 @@ const source = page.locator('.srow[data-sid] select').nth(1);
 assert.equal(await source.inputValue(), '7', 'seven on hand shows as Buy');
 assert.deepEqual(await source.locator('option').evaluateAll(os => os.map(o => o.value)), ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
 
+// Secondary buttons line up with their headings and neighbours; only the plan's sections are spaced apart.
+await page.click('#projBtn');
+assert.deepEqual(await page.$$eval('#sheet .btn', bs => [...new Set(bs.map(b => getComputedStyle(b).marginTop))]), ['0px'], 'buttons in Projects');
+await page.click('#pjx');
+assert.equal(await page.$eval('#planOut div.sec', d => getComputedStyle(d).marginTop), '22px');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
