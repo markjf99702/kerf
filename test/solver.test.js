@@ -22,9 +22,9 @@ function line(start) { const i = src.indexOf(start); return src.slice(i, src.ind
 const K = new Function([
   "var U = 'in';",
   line('var VULGAR = '), line('var SPLITS = '), line('var MINR = '), list('SORTS'), list('FITS'),
-  ...['sixteenths', 'mmOf', 'fmt', 'parseLen', 'mulberry', 'bestFill', 'solveBoards', 'orientations', 'newSheet',
+  ...['esc', 'sixteenths', 'mmOf', 'fmt', 'fmtH', 'parseLen', 'mulberry', 'bestFill', 'solveBoards', 'orientations', 'newSheet',
     'placeIn', 'fitsStock', 'packRun', 'freeArea', 'evalSheets', 'sheetSteps', 'solveSheets'].map(fn),
-  'return { parseLen: parseLen, fmt: fmt, solveBoards: solveBoards, solveSheets: solveSheets, units: function (u) { U = u; } };'
+  'return { parseLen: parseLen, fmt: fmt, fmtH: fmtH, solveBoards: solveBoards, solveSheets: solveSheets, units: function (u) { U = u; } };'
 ].join('\n'))();
 
 let failed = 0;
@@ -58,6 +58,11 @@ for (const [s, want] of Object.entries(inches)) {
   check(Number.isNaN(want) ? Number.isNaN(got) : Math.abs(got - want) < 1e-9, `parseLen(${JSON.stringify(s)}) = ${got}, want ${want}`);
 }
 check(K.fmt(35.75) === '35 3/4"' && K.fmt(96, { ft: true }) === "8'" && K.fmt(102.5, { ft: true }) === "8' 6 1/2\"", 'fmt in inches');
+// Just under a whole foot rounds up to it, not to 12": 2438 mm is 8', not 7' 12".
+for (const [x, want, wantH] of [[95.98, "8'", '8′'], [2438 / 25.4, "8'", '8′'], [107.97, "9'", '9′'], [191.975, "16'", '16′'], [95.96, "7' 11 15/16\"", '7′ 11 <span class="fr"><sup>15</sup>⁄<sub>16</sub></span>″']]) {
+  const got = K.fmt(x, { ft: true }), gotH = K.fmtH(x, { ft: true });
+  check(got === want && gotH === wantH, `fmt(${x}, in feet) = ${got} and ${gotH}, want ${want}`);
+}
 K.units('mm'); check(K.parseLen('600') === 600 / 25.4 && K.fmt(600 / 25.4) === '600 mm', 'millimeters'); K.units('in');
 
 console.log('boards: the example project');

@@ -344,9 +344,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       if (o.ft && x * 25.4 >= 1000) { var m = Math.round(x * 25.4) / 1000; return String(+m.toFixed(3)) + (o.bare ? '' : ' m'); }
       return mmOf(x) + (o.bare ? '' : ' mm');
     }
-    if (o.ft && x >= 24) {
-      var ft = Math.floor((x + 1 / 64) / 12), rem = x - ft * 12;
-      return ft + "'" + (rem > 1 / 32 ? ' ' + fmt(rem) : '');
+    if (o.ft && x >= 24) { // to the nearest sixteenth first, so just under a foot shows as the foot, not 12"
+      var n = Math.round(x * 16), ft = Math.floor(n / 192), rem = (n - ft * 192) / 16;
+      return ft + "'" + (rem ? ' ' + fmt(rem) : '');
     }
     var p = sixteenths(x), s = p.w ? String(p.w) : '';
     if (p.f) s += (s ? ' ' : '') + p.f + '/' + p.d;
@@ -357,8 +357,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     o = o || {};
     if (U === 'mm') return esc(fmt(x, o));
     if (o.ft && x >= 24) {
-      var ft = Math.floor((x + 1 / 64) / 12), rem = x - ft * 12;
-      return ft + '′' + (rem > 1 / 32 ? ' ' + fmtH(rem) : '');
+      var n = Math.round(x * 16), ft = Math.floor(n / 192), rem = (n - ft * 192) / 16;
+      return ft + '′' + (rem ? ' ' + fmtH(rem) : '');
     }
     var p = sixteenths(x), s = p.w ? String(p.w) : '';
     if (p.f) s += (s ? ' ' : '') + '<span class="fr"><sup>' + p.f + '</sup>⁄<sub>' + p.d + '</sub></span>';
