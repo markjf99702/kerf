@@ -110,6 +110,8 @@ assert.equal(await cuts.nth(2).getAttribute('aria-checked'), 'true');
 await open(null, linkTo(MUDROOM));
 await page.waitForSelector('#lkAdd');
 assert.match(await page.textContent('#sheet .lk'), /Mudroom bench\s*2×4 — 8 pieces\s*¾ plywood — 1 piece/, 'the link counts pieces, as Projects counts parts');
+// Nothing in it is ringed: the page hasn't been touched yet, so a focused button would show its focus ring.
+assert.equal(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), 'none', 'the link dialog opens with a button ringed');
 assert.equal(await page.evaluate(() => location.hash), '', 'the project leaves the address bar');
 await page.click('#lkAdd');
 assert.equal(await page.inputValue('#pname'), 'Mudroom bench');
@@ -204,12 +206,14 @@ assert.ok(await page.evaluate(() => {
   for (const [i, [name, qty]] of parts.entries()) assert.ok(all.includes(`${'ABCDEFGHIJ'[i]} ${name.replace(' 🪵', '')} `) && all.includes(`×${qty}`), `part ${'ABCDEFGHIJ'[i]} is missing from the legend`);
 }
 
-// Dialogs take the keyboard: focus moves in, they're named by their heading, Tab doesn't wander to the page behind,
-// and closing one puts focus back on the button that opened it.
+// Dialogs take the keyboard: focus moves in, they're named by their heading, Tab goes on to their buttons and doesn't
+// wander to the page behind, and closing one puts focus back on the button that opened it.
 await page.focus('#setBtn');
 await page.keyboard.press('Enter');
 assert.ok(await page.evaluate(() => document.getElementById('sheet').contains(document.activeElement)), 'focus stays behind the Settings dialog');
 assert.equal(await page.evaluate(() => { const d = document.querySelector('#sheet [role=dialog]'); return document.getElementById(d.getAttribute('aria-labelledby')).textContent; }), 'Settings for this project');
+await page.keyboard.press('Tab');
+assert.equal(await page.evaluate(() => document.activeElement.id), 'stx', 'Tab doesn’t go on to the dialog’s first button');
 for (let i = 0; i < 9; i++) {
   await page.keyboard.press('Tab');
   assert.ok(await page.evaluate(() => !document.getElementById('app').contains(document.activeElement) && !document.querySelector('.jd-foot').contains(document.activeElement)), 'Tab reached the page behind the dialog');

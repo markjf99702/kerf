@@ -236,6 +236,7 @@ div.sec{margin-top:22px}
 /* sheets */
 .sheetbg{position:fixed;inset:0;background:rgba(18,20,22,.46);z-index:50;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--ground);width:min(640px,100%);max-height:calc(100% - 24px - env(safe-area-inset-top,0px));display:flex;flex-direction:column;border-radius:16px 16px 0 0;border-top:4px solid var(--tape);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet:focus{outline:none}
 .sheet .hd{display:flex;gap:8px;align-items:center;padding:14px 16px 8px}
 .sheet .hd h2{margin:0;font:700 19px var(--body);flex:1}
 .sheet .bd{overflow:auto;padding:4px 16px 18px;display:flex;flex-direction:column;gap:14px}
@@ -1223,17 +1224,18 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 
   // ---------- sheets (dialogs) ----------
   // A dialog is named by its heading and takes the keyboard: the page behind it is inert while it's open,
-  // and closing it puts focus back where it was.
+  // and closing it puts focus back where it was. Focus goes to the dialog itself, and Tab on to its buttons:
+  // a dialog that opens with the page (a link) would otherwise show its first button, "Not now", ringed.
   var opener = null;
   function behind(on) { $('app').inert = on; document.querySelector('.jd-foot').inert = on; }
   function openSheet(html) {
     var s = $('sheet');
     if (s.hidden) opener = document.activeElement;
-    s.innerHTML = '<div class="sheetbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetHd">' + html + '</div></div>';
+    s.innerHTML = '<div class="sheetbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetHd" tabindex="-1">' + html + '</div></div>';
     var hd = s.querySelector('h2'); if (hd) hd.id = 'sheetHd';
     s.hidden = false; behind(true);
     s.querySelector('.sheetbg').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeSheet(); });
-    var first = s.querySelector('button, input, select, textarea'); if (first) first.focus();
+    s.querySelector('.sheet').focus();
     return s.querySelector('.sheet');
   }
   function closeSheet() {
