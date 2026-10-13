@@ -1081,8 +1081,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       var restW = x + bw - cx - b.trim * px;
       if (restW > 0.5) {
         s += '<rect class="dg-scrap" x="' + cx.toFixed(1) + '" y="' + y + '" width="' + restW.toFixed(1) + '" height="' + rowH + '"/>';
-        var keep = b.offcut >= P.keep, t = (keep ? 'keep ' : '') + fmt(b.offcut);
-        if (restW > 70) s += '<text class="dg-scrapt" x="' + (cx + restW / 2).toFixed(1) + '" y="' + (y + rowH / 2) + '" text-anchor="middle">' + esc(t) + '</text>';
+        // a label only where it fits (about 6.6px a character): the length alone if "keep" makes it too wide
+        var keep = b.offcut >= P.keep, t = (keep ? 'keep ' : '') + fmt(b.offcut), fits = function (t) { return t.length * 6.6 + 8 <= restW; };
+        if (!fits(t)) t = fmt(b.offcut);
+        if (fits(t)) s += '<text class="dg-scrapt" x="' + (cx + restW / 2).toFixed(1) + '" y="' + (y + rowH / 2) + '" text-anchor="middle">' + esc(t) + '</text>';
       }
       s += '<rect class="dg-edge" x="' + x + '" y="' + y + '" width="' + bw.toFixed(1) + '" height="' + rowH + '" rx="2"/>';
       if (b.stock.have) s += '<text class="dg-meta" x="' + (x + bw + 6).toFixed(1) + '" y="' + (y + rowH / 2) + '">yours</text>';

@@ -302,6 +302,10 @@ assert.ok(await page.evaluate(() => {
   assert.ok(outline > 0 && outline < pdf.indexOf('0.14 0.38 0.8 RG 1 w [3 2] 0 d'), 'the PDF draws the sheet outline over its cut numbers');
 }
 
+// An offcut's label fits inside the offcut: on a phone "keep 23 7/8\"" is too wide for it, so it shows the length alone.
+await open(saved(project('Offcut', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 1, len: 72 }])])));
+assert.deepEqual(await page.$$eval('#planOut .dg-scrapt', ts => ts.map(t => [t.textContent, t.getBBox().width <= t.previousElementSibling.width.baseVal.value - 2])), [['23 7/8"', true]], 'the offcut label');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
