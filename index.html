@@ -1196,8 +1196,26 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   function applyProject() { U = P.units || 'in'; CUR = P.cur || '$'; renderHead(); renderList(); resolve(); setTab(DB.tab || 'plan', true); }
 
   // ---------- sheets (dialogs) ----------
-  function openSheet(html) { var s = $('sheet'); s.innerHTML = '<div class="sheetbg"><div class="sheet" role="dialog" aria-modal="true">' + html + '</div></div>'; s.hidden = false; s.querySelector('.sheetbg').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeSheet(); }); return s.querySelector('.sheet'); }
-  function closeSheet() { var s = $('sheet'); s.hidden = true; s.innerHTML = ''; }
+  // A dialog is named by its heading and takes the keyboard: the page behind it is inert while it's open,
+  // and closing it puts focus back where it was.
+  var opener = null;
+  function behind(on) { $('app').inert = on; document.querySelector('.jd-foot').inert = on; }
+  function openSheet(html) {
+    var s = $('sheet');
+    if (s.hidden) opener = document.activeElement;
+    s.innerHTML = '<div class="sheetbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetHd">' + html + '</div></div>';
+    var hd = s.querySelector('h2'); if (hd) hd.id = 'sheetHd';
+    s.hidden = false; behind(true);
+    s.querySelector('.sheetbg').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeSheet(); });
+    var first = s.querySelector('button, input, select, textarea'); if (first) first.focus();
+    return s.querySelector('.sheet');
+  }
+  function closeSheet() {
+    var s = $('sheet'); if (s.hidden) return;
+    s.hidden = true; s.innerHTML = ''; behind(false);
+    if (opener && opener !== document.body && opener.isConnected) opener.focus();
+    opener = null;
+  }
   function settingsSheet() {
     openSheet('<div class="hd"><h2>Settings for this project</h2><button class="btn sm sec" type="button" id="stx">Done</button></div><div class="bd">' +
       '<div class="fld"><span>Units</span><div class="seg" id="uSeg"><button type="button" data-v="in">Inches</button><button type="button" data-v="mm">Millimeters</button></div></div>' +

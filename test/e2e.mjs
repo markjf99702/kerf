@@ -202,6 +202,19 @@ assert.ok(await page.evaluate(() => {
   for (const [i, [name, qty]] of parts.entries()) assert.ok(all.includes(`${'ABCDEFGHIJ'[i]} ${name.replace(' 🪵', '')} `) && all.includes(`×${qty}`), `part ${'ABCDEFGHIJ'[i]} is missing from the legend`);
 }
 
+// Dialogs take the keyboard: focus moves in, they're named by their heading, Tab doesn't wander to the page behind,
+// and closing one puts focus back on the button that opened it.
+await page.focus('#setBtn');
+await page.keyboard.press('Enter');
+assert.ok(await page.evaluate(() => document.getElementById('sheet').contains(document.activeElement)), 'focus stays behind the Settings dialog');
+assert.equal(await page.evaluate(() => { const d = document.querySelector('#sheet [role=dialog]'); return document.getElementById(d.getAttribute('aria-labelledby')).textContent; }), 'Settings for this project');
+for (let i = 0; i < 9; i++) {
+  await page.keyboard.press('Tab');
+  assert.ok(await page.evaluate(() => !document.getElementById('app').contains(document.activeElement) && !document.querySelector('.jd-foot').contains(document.activeElement)), 'Tab reached the page behind the dialog');
+}
+await page.keyboard.press('Escape');
+assert.equal(await page.evaluate(() => document.activeElement.id), 'setBtn', 'focus is lost when the dialog closes');
+
 // A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
 // (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
 const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
