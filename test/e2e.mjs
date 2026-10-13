@@ -68,6 +68,14 @@ async function open(db, hash = '') {
 const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('kerf.v1')));
 const view = t => page.click(`#tabs button[data-t="${t}"]`);
 const fitsPhone = async what => assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `the ${what} scrolls sideways on a phone`);
+const cutsFact = () => page.evaluate(() => [...document.querySelectorAll('.fact')].map(f => f.textContent).filter(t => /cut/.test(t))[0]);
+const sawSteps = () => page.$$eval('#sawOut .cut[data-k]', els => els.map(e => e.querySelector('small').textContent));
+// Saves the shop PDF and returns it as text (its streams aren't compressed).
+async function shopPdf() {
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#pdfBtn')]);
+  return (await readFile(await dl.path())).toString('latin1');
+}
+const pdfKerfLines = pdf => (pdf.match(/0\.14 0\.38 0\.8 RG 1 w [\d. ]+ m [\d. ]+ l S/g) || []).length; // solid blue: a board's saw cuts
 
 // A first visit opens the example: the legs, rails and shelves cost $100.64.
 await open(null);
@@ -108,6 +116,25 @@ await page.waitForFunction(() => document.getElementById('pname').value === 'Gar
 assert.ok(await page.isHidden('#sheet'), 'Projects closes once the file is open');
 assert.equal(await page.textContent('.total'), '$70.76');
 assert.equal((await stored()).order.length, 3);
+
+// A board's last part comes off without a cut only when it's all that's left. Two 47 7/8" rails from an 8' board
+// (the planner's advice) leave 48" after the first cut, so the second rail is measured and cut too.
+const RAIL = 'Measure from the end, cut on the waste side of the mark', FRESH = 'Measure from the fresh end';
+const sawCases = [
+  { trim: 0, parts: [{ name: 'Rail', qty: 2, len: 47.875 }], steps: [RAIL, FRESH], cuts: 2, lines: 2 },
+  { trim: 0.25, parts: [{ name: 'Rail', qty: 2, len: 47 + 11 / 16 }], steps: ['Trim off 1/4" and measure every part from this fresh end', RAIL, FRESH + ' — this cut squares up the far end too'], cuts: 3, lines: 2 },
+  { trim: 0.25, parts: [{ name: 'Top', qty: 1, len: 95.5 }], steps: ['Trim off 1/4" and measure every part from this fresh end', RAIL + ' — this cut squares up the far end too'], cuts: 2, lines: 1 },
+  { trim: 0, parts: [{ name: 'Top', qty: 1, len: 96 }], steps: ['What’s left is this part — no cut needed'], cuts: 0, lines: 0 },
+];
+for (const c of sawCases) {
+  await open(saved(project('Saw', [board('2×4', [{ len: 96, price: 4.28 }], c.parts)], { trim: c.trim })));
+  const what = `${c.parts[0].qty} × ${c.parts[0].len} on 8', trim ${c.trim}`;
+  assert.equal(await cutsFact(), c.cuts + 'cuts', what + ': cuts in the plan');
+  assert.equal(await page.locator('#planOut .dg-kerf').count(), c.lines, what + ': saw cuts drawn');
+  assert.equal(pdfKerfLines(await shopPdf()), c.lines, what + ': saw cuts in the PDF');
+  await view('saw');
+  assert.deepEqual(await sawSteps(), c.steps, what + ': steps at the saw');
+}
 
 // Boards on hand that run short say so in the cut list, instead of stopping the page.
 await open(saved(project('Short of legs', [board('Other board', [{ len: 96, have: 2 }], [{ name: 'Leg', qty: 3, len: 72 }])])));

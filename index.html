@@ -608,6 +608,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     }).sort(function (a, b) { return (a.stock.have ? 1 : 0) - (b.stock.have ? 1 : 0) || b.stock.len - a.stock.len || b.need - a.need; });
     return out;
   }
+  // A board's last part comes off with no cut only when it's all that's left: nothing past it (a sliver
+  // thinner than the kerf still has to be cut away) and no far end to square up.
+  function lastIsLeft(b) { return !(b.trim > 0) && b.cap - b.need < 1 / 32; }
 
   // ---------- sheets: guillotine cutting (every cut runs edge to edge) ----------
   var SORTS = [
@@ -773,7 +776,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     var cost = 0, partLen = 0, kerfLen = 0, stockLen = 0, boards = 0, sheets = 0, partArea = 0, sheetArea = 0, cuts = 0;
     mats.forEach(function (r) {
       cost += r.cost;
-      if (r.kind === 'board') r.items.forEach(function (b) { boards++; stockLen += b.cap; b.pieces.forEach(function (p) { partLen += p.len; }); kerfLen += Math.max(0, b.pieces.length - 1) * P.kerf + (b.offcut > 0 ? P.kerf : 0); cuts += b.pieces.length - (b.offcut > 0 ? 0 : 1); });
+      if (r.kind === 'board') r.items.forEach(function (b) { boards++; stockLen += b.cap; b.pieces.forEach(function (p) { partLen += p.len; }); kerfLen += Math.max(0, b.pieces.length - 1) * P.kerf + (b.offcut > 0 ? P.kerf : 0); cuts += b.pieces.length - (lastIsLeft(b) ? 1 : 0) + (b.trim > 0 ? 1 : 0); });
       else r.items.forEach(function (s) { sheets++; sheetArea += s.L * s.W; s.placed.forEach(function (p) { partArea += p.l * p.w; }); cuts += s.steps.filter(function (x) { return x.type !== 'none'; }).length; });
     });
     RES = { mats: mats, cost: cost, boards: boards, sheets: sheets, cuts: cuts, boardYield: stockLen ? partLen / stockLen : 0, boardKerf: stockLen ? kerfLen / stockLen : 0, sheetYield: sheetArea ? partArea / sheetArea : 0 };
@@ -1041,13 +1044,14 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       s += '<text class="dg-metab" x="0" y="' + (y + rowH / 2 - 7) + '">' + (bi + 1) + '</text><text class="dg-meta" x="0" y="' + (y + rowH / 2 + 8) + '">' + esc(fmt(b.stock.len, { ft: true })) + '</text>';
       s += '<rect class="dg-wood" x="' + x + '" y="' + y + '" width="' + bw.toFixed(1) + '" height="' + rowH + '" rx="2"/><path class="dg-grain" d="' + grainPaths(x, y, bw, rowH, 17 + bi * 31) + '"/>';
       var cx = x + b.trim * px;
-      if (b.trim > 0) s += '<rect class="dg-scrap" x="' + x + '" y="' + y + '" width="' + (b.trim * px).toFixed(1) + '" height="' + rowH + '"/>';
+      // both trimmed ends first, so the cut that squares up the far end draws over its hatching
+      if (b.trim > 0) s += '<rect class="dg-scrap" x="' + x + '" y="' + y + '" width="' + (b.trim * px).toFixed(1) + '" height="' + rowH + '"/><rect class="dg-scrap" x="' + (x + bw - b.trim * px).toFixed(1) + '" y="' + y + '" width="' + (b.trim * px).toFixed(1) + '" height="' + rowH + '"/>';
       b.pieces.forEach(function (p, k) {
         var w = p.len * px, part = m.mat.parts[p.pi], L = letter(p.pi), lbl = w > 92 ? L + ' ' + fmt(p.len) : w > 46 ? fmt(p.len) : w > 16 ? L : '';
         s += '<rect class="dg-part" x="' + cx.toFixed(1) + '" y="' + (y + 0.5) + '" width="' + w.toFixed(1) + '" height="' + (rowH - 1) + '"><title>' + esc(L + ' · ' + (part && part.name ? part.name + ' · ' : '') + fmt(p.len)) + '</title></rect>';
         if (lbl) s += '<text class="dg-lbl" x="' + (cx + w / 2).toFixed(1) + '" y="' + (y + rowH / 2) + '" text-anchor="middle">' + esc(lbl) + '</text>';
         cx += w;
-        if (k < b.pieces.length - 1 || b.offcut > 0) { s += '<line class="dg-kerf" x1="' + (cx + P.kerf * px / 2).toFixed(1) + '" y1="' + (y - 3) + '" x2="' + (cx + P.kerf * px / 2).toFixed(1) + '" y2="' + (y + rowH + 3) + '"/>'; cx += P.kerf * px; }
+        if (k < b.pieces.length - 1 || !lastIsLeft(b)) { s += '<line class="dg-kerf" x1="' + (cx + P.kerf * px / 2).toFixed(1) + '" y1="' + (y - 3) + '" x2="' + (cx + P.kerf * px / 2).toFixed(1) + '" y2="' + (y + rowH + 3) + '"/>'; cx += P.kerf * px; }
       });
       var restW = x + bw - cx - b.trim * px;
       if (restW > 0.5) {
@@ -1055,7 +1059,6 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         var keep = b.offcut >= P.keep, t = (keep ? 'keep ' : '') + fmt(b.offcut);
         if (restW > 70) s += '<text class="dg-scrapt" x="' + (cx + restW / 2).toFixed(1) + '" y="' + (y + rowH / 2) + '" text-anchor="middle">' + esc(t) + '</text>';
       }
-      if (b.trim > 0) s += '<rect class="dg-scrap" x="' + (x + bw - b.trim * px).toFixed(1) + '" y="' + y + '" width="' + (b.trim * px).toFixed(1) + '" height="' + rowH + '"/>';
       s += '<rect class="dg-edge" x="' + x + '" y="' + y + '" width="' + bw.toFixed(1) + '" height="' + rowH + '" rx="2"/>';
       if (b.stock.have) s += '<text class="dg-meta" x="' + (x + bw + 6).toFixed(1) + '" y="' + (y + rowH / 2) + '">yours</text>';
     });
@@ -1122,8 +1125,13 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         if (m.kind === 'board') {
           if (it.trim > 0) t.cuts.push({ meas: fmtH(it.trim), what: 'Square up one end', sub: 'Trim off ' + fmt(it.trim) + ' and measure every part from this fresh end' });
           it.pieces.forEach(function (p, k) {
-            var part = m.mat.parts[p.pi], last = k === it.pieces.length - 1 && it.offcut <= 0;
-            t.cuts.push({ meas: fmtH(p.len), what: '<b>' + letter(p.pi) + '</b> ' + esc(part && part.name || 'Part'), sub: last ? 'What’s left is this part — no cut needed' : k === 0 ? 'Measure from the end, cut on the waste side of the mark' : 'Measure from the fresh end' });
+            var part = m.mat.parts[p.pi], last = k === it.pieces.length - 1, sub;
+            if (last && lastIsLeft(it)) sub = 'What’s left is this part — no cut needed';
+            else {
+              sub = k === 0 ? 'Measure from the end, cut on the waste side of the mark' : 'Measure from the fresh end';
+              if (last && it.trim > 0 && it.offcut <= 0) sub += ' — this cut squares up the far end too';
+            }
+            t.cuts.push({ meas: fmtH(p.len), what: '<b>' + letter(p.pi) + '</b> ' + esc(part && part.name || 'Part'), sub: sub });
           });
           if (it.offcut > 0) t.note = 'Leaves a ' + fmt(it.offcut) + ' offcut' + (it.offcut >= P.keep ? ' — worth keeping' : '');
         } else {
@@ -1360,7 +1368,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           b.pieces.forEach(function (p, k) {
             var w = p.len * px; rect(cx, y, w, 24, null, '#B08447', 0.6);
             var lbl = letter(p.pi) + ' ' + fmt(p.len); if (textW('H', 8, lbl) > w - 4) lbl = letter(p.pi); if (textW('H', 8, lbl) < w - 2) text('H', 8, cx + (w - textW('H', 8, lbl)) / 2, y + 15, lbl, '#2E220F');
-            cx += w; if (k < b.pieces.length - 1 || b.offcut > 0) { line(cx + P.kerf * px / 2, y - 2, cx + P.kerf * px / 2, y + 26, '#2361CC', 1); cx += P.kerf * px; }
+            cx += w; if (k < b.pieces.length - 1 || !lastIsLeft(b)) { line(cx + P.kerf * px / 2, y - 2, cx + P.kerf * px / 2, y + 26, '#2361CC', 1); cx += P.kerf * px; }
           });
           var rest = x + b.stock.len * px - cx - b.trim * px; if (rest > 0.5) { rect(cx, y, rest, 24, '#CDD2CA'); var t = fmt(b.offcut); if (textW('H', 7.5, t) < rest - 4) text('H', 7.5, cx + (rest - textW('H', 7.5, t)) / 2, y + 15, t, '#50575E'); }
           y += 34;
