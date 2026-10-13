@@ -899,7 +899,11 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       else if (f === 'len' || f === 'wid') { v = parseLen(el.value); el.classList.toggle('bad', !!el.value.trim() && !(v > 0)); p[f] = v > 0 ? v : 0; }
     } else if (s) {
       if (f === 'slen' || f === 'swid') { v = parseLen(el.value); el.classList.toggle('bad', !(v > 0)); if (v > 0) s[f === 'slen' ? 'len' : 'wid'] = v; }
-      else if (f === 'price') { v = parseFloat(el.value.replace(/[^\d.]/g, '')); el.classList.toggle('bad', !!el.value.trim() && !(v >= 0)); s.price = v >= 0 ? v : 0; }
+      else if (f === 'price') {
+        // a decimal comma (4,28 or 1.234,50) reads as a point; a thousands comma (1,234) doesn't
+        var t = el.value.trim(); if (/,\d{1,2}(?!\d)/.test(t) && t.lastIndexOf(',') > t.lastIndexOf('.')) t = t.replace(/\./g, '').replace(/,(\d{1,2})(?!\d)/, '.$1');
+        v = parseFloat(t.replace(/[^\d.]/g, '')); el.classList.toggle('bad', !!t && !(v >= 0)); s.price = v >= 0 ? v : 0;
+      }
       else if (f === 'have') { s.have = +el.value || 0; renderList(); }
       if (f !== 'have') refreshChips(m);
     }
