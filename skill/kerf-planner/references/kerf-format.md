@@ -51,4 +51,4 @@ https://kerf.junkdrawer.works/#k1z<data>
 
 `<data>` is the compact JSON above, compressed with raw DEFLATE, then base64url-encoded without padding. `#k1j<data>` is the same without compression. Kerf also accepts `#project=<URL-encoded JSON>`, which can be written by hand, but it gets long.
 
-Opening a link shows the project and asks before adding it. It never replaces an existing project.
+Opening a link shows the project and asks before adding it. It never replaces an existing project. A link pasted into the box under **Projects** opens the same way (on an iPhone a tapped link opens in Safari, not in Kerf on the home screen).

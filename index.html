@@ -1467,7 +1467,13 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   }
   function addProject(p) { DB.projects[p.id] = p; DB.order.unshift(p.id); DB.current = p.id; P = p; save(true); closeSheet(); applyProject(); toast('Opened “' + P.name + '”'); }
   function importText(t) {
-    var p; try { p = cleanProject(JSON.parse(t)); } catch (e) { toast('That isn’t a Kerf project'); return; }
+    var p; try { p = cleanProject(JSON.parse(t)); } catch (e) {
+      // A link pasted here opens as it would from the address bar: on an iPhone a tapped link opens in Safari,
+      // not in Kerf on the home screen, so copying it across is the way in.
+      var link = /#(k1[zj][A-Za-z0-9_-]+|project=\S+)/.exec(t);
+      if (link) openLink('#' + link[1]); else toast('That isn’t a Kerf project');
+      return;
+    }
     addProject(p);
   }
 
@@ -1491,6 +1497,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   function checkLink() {
     var hash = location.hash; if (!/^#(k1[zj]|project=)/.test(hash)) return;
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+    openLink(hash);
+  }
+  // Shows what a link holds and asks before adding it, whether it came in the address or was pasted into Projects.
+  function openLink(hash) {
     // linkText inside the chain, so a link cut short or badly escaped ends in the toast below too
     Promise.resolve(hash).then(linkText).then(function (t) {
       if (!t) return;

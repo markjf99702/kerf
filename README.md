@@ -56,7 +56,7 @@ python3 skill/kerf-planner/scripts/make_kerf.py plan.json
 
 ## Opening a project from a link
 
-A link like `https://kerf.junkdrawer.works/#k1z…` carries a whole project in the part after `#`, so it never reaches a server. Opening one shows what's in it and asks before adding it as a new project. It never replaces one you have, and a link opened twice offers your existing copy.
+A link like `https://kerf.junkdrawer.works/#k1z…` carries a whole project in the part after `#`, so it never reaches a server. Opening one shows what's in it and asks before adding it as a new project. It never replaces one you have, and a link opened twice offers your existing copy. A link pasted into the box under **Projects** opens the same way, which helps on an iPhone: there a tapped link opens in Safari, not in Kerf on the home screen.
 
 The format is the project JSON, compressed with raw DEFLATE and base64url-encoded; `#k1j…` is the same without compression. `#project=` followed by URL-encoded JSON also works, for writing a link by hand.
 

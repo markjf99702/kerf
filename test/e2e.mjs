@@ -137,6 +137,29 @@ await page.evaluate(hash => { location.hash = hash; }, linkTo(MUDROOM));
 await page.waitForSelector('#lkAdd', { timeout: 5000 });
 await page.click('#lkx');
 
+// A link pasted into Projects opens as it would from the address bar (on an iPhone a tapped link opens in Safari,
+// not in Kerf on the home screen). A broken one says so, and text that's neither says that.
+{
+  const paste = text => page.evaluate(t => {
+    const data = new DataTransfer(); data.setData('text/plain', t);
+    document.getElementById('pjPaste').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+  const toastSays = async () => { await page.waitForFunction(() => document.getElementById('toast').classList.contains('show'), null, { timeout: 3000 }).catch(() => {}); return page.textContent('#toast'); };
+  await open(null);
+  await page.click('#projBtn');
+  await paste('https://kerf.junkdrawer.works/' + linkTo({ kerf: 1, project: { ...MUDROOM.project, name: 'Pasted bench' } }));
+  await page.waitForSelector('#lkAdd', { timeout: 5000 }).catch(() => assert.fail('a pasted link doesn’t open'));
+  assert.match(await page.textContent('#sheet .lk'), /Pasted bench\s*2×4 — 8 pieces/);
+  await page.click('#lkAdd');
+  assert.equal(await page.inputValue('#pname'), 'Pasted bench');
+  await page.click('#projBtn');
+  await paste('https://kerf.junkdrawer.works/#k1zABCDE');
+  assert.equal(await toastSays(), 'That link doesn’t hold a Kerf project');
+  await paste('a bench, about four feet long');
+  assert.equal(await toastSays(), 'That isn’t a Kerf project');
+  await page.click('#pjx');
+}
+
 // Opening Kerf writes nothing until something really changes. A first visit that only looks around leaves
 // storage empty, so carry.js can still bring projects over from junkdrawer.works/kerf/ on a later visit.
 await open(null);
