@@ -810,39 +810,44 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     RES = { mats: mats, cost: cost, boards: boards, sheets: sheets, cuts: cuts, boardYield: stockLen ? partLen / stockLen : 0, boardKerf: stockLen ? kerfLen / stockLen : 0, sheetYield: sheetArea ? partArea / sheetArea : 0 };
     return RES;
   }
-  // Would shaving a hair off one part buy less material? Checked quietly after each change. The tips on
-  // screen stay until this check is done, then TIPS is replaced in one go.
+  // Would shaving a hair off one part buy less material? Checked quietly after each change, one quick solve
+  // at a time and only while the page is idle, so typing never waits for it. A material of more than 60 sheet
+  // pieces or 500 board pieces is skipped: each quick solve of it takes a phone too long. The tips on screen
+  // stay until this check is done, then TIPS is replaced in one go.
+  var whenIdle = window.requestIdleCallback ? function (f) { requestIdleCallback(f, { timeout: 1000 }); } : function (f) { setTimeout(f, 0); };
   function findTips(gen) {
     var found = [];
     var jobs = [], deltas = U === 'mm' ? [1, 2, 3, 5].map(function (d) { return d / 25.4; }) : [1 / 16, 1 / 8, 3 / 16, 1 / 4];
     P.materials.forEach(function (m, mi) {
-      var base = RES.mats[mi]; if (!base || !base.items.length || m.parts.length > 16) return;
+      var base = RES.mats[mi], sheet = m.kind === 'sheet'; if (!base || !base.items.length || m.parts.length > 16) return;
+      var pieces = m.parts.reduce(function (a, p) { return a + (p.qty > 0 ? Math.min(p.qty, sheet ? 300 : 500) : 0); }, 0);
+      if (pieces > (sheet ? 60 : 500)) return;
       m.parts.forEach(function (p, pi) {
         if (!(p.qty > 0)) return;
-        (m.kind === 'sheet' ? ['len', 'wid'] : ['len']).forEach(function (dim) { if (p[dim] > 0) jobs.push({ mi: mi, pi: pi, dim: dim, base: base.cost }); });
+        (sheet ? ['len', 'wid'] : ['len']).forEach(function (dim) { if (p[dim] > 0) jobs.push({ mi: mi, pi: pi, dim: dim, base: base.cost }); });
       });
     });
-    var i = 0;
-    (function step() {
+    // Each step tries one shave of one part: the next size down, until one saves money or none is left.
+    var i = 0, d = 0;
+    function step() {
       if (gen !== GEN) return;
-      var t0 = Date.now();
-      while (i < jobs.length && Date.now() - t0 < 30) {
-        var j = jobs[i++], m = P.materials[j.mi], p = m.parts[j.pi];
-        for (var d = 0; d < deltas.length; d++) {
-          var v = p[j.dim] - deltas[d]; if (v <= 0) break;
-          var clone = Object.assign({}, m, { parts: m.parts.map(function (q, k) { return k === j.pi ? Object.assign({}, q, (function () { var o = {}; o[j.dim] = v; return o; })()) : q; }) });
-          var r = solveMat(clone, true);
-          if (!r.errors.length && r.cost < j.base - 0.005) { found.push({ mi: j.mi, pid: p.id, dim: j.dim, from: p[j.dim], to: v, save: j.base - r.cost, name: p.name, mat: m.name }); break; }
-        }
-      }
-      if (i < jobs.length) setTimeout(step, 0);
-      else if (gen === GEN) { TIPS = found.sort(function (a, b) { return b.save - a.save; }); renderTips(); }
-    })();
+      var j = jobs[i], m = j && P.materials[j.mi], p = m && m.parts[j.pi], v = p ? p[j.dim] - deltas[d] : 0;
+      if (v > 0) {
+        var clone = Object.assign({}, m, { parts: m.parts.map(function (q, k) { return k === j.pi ? Object.assign({}, q, (function () { var o = {}; o[j.dim] = v; return o; })()) : q; }) });
+        var r = solveMat(clone, true);
+        if (!r.errors.length && r.cost < j.base - 0.005) { found.push({ mi: j.mi, pid: p.id, dim: j.dim, from: p[j.dim], to: v, save: j.base - r.cost, name: p.name, mat: m.name }); d = deltas.length; }
+        else d++;
+      } else d = deltas.length;
+      if (d >= deltas.length) { i++; d = 0; }
+      if (i < jobs.length) whenIdle(step);
+      else { TIPS = found.sort(function (a, b) { return b.save - a.save; }); renderTips(); }
+    }
+    whenIdle(step);
   }
   var solveT;
   function resolve(soon) {
     clearTimeout(solveT);
-    var go = function () { GEN++; solveAll(); renderPlan(); renderSaw(); renderErrors(); setTimeout(function () { findTips(GEN); }, 60); };
+    var go = function () { GEN++; solveAll(); renderPlan(); renderSaw(); renderErrors(); findTips(GEN); };
     if (soon) solveT = setTimeout(go, 220); else go();
   }
 

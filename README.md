@@ -16,7 +16,7 @@
 
 - **Cut list.** Group parts by material: 2×4s, 1×6s, ¾ plywood, anything. Each material lists the sizes you can buy and what they cost. Lengths can be typed the way a tape reads: `35 3/4`, `35-3/4`, `2' 11 3/4"`, `¾`, or `910mm`. The page can also work in millimetres throughout.
 - **Plan.** The total to spend, a shopping list you can copy as text, and a diagram of every board and sheet. The diagrams show the parts, the saw kerf between them, and the offcut left over.
-- **Tips.** After each change Kerf checks whether shaving a part by a sixteenth or two (or a few mm) would let you buy less wood. It says so — *“Make the rail 47 15/16″ instead of 48″ and the 2×4s cost $4.12 less”* — with a button to apply it.
+- **Tips.** After each change Kerf checks whether shaving a part by a sixteenth or two (or a few mm) would let you buy less wood. It says so — *“Make the rail 47 15/16″ instead of 48″ and the 2×4s cost $4.12 less”* — with a button to apply it. It checks while the page is idle, so typing never waits for it; a material of more than 60 sheet pieces or 500 board pieces is too big to check quickly and gets no tips.
 - **Offcuts you already have** are used first, for free, and never more of them than you say you have.
 - **Grain.** Sheet parts can be locked so the grain runs along their length; unlocked parts may be turned to fit better.
 - **At the saw.** Each board and sheet becomes a checklist in cutting order, with where to measure from. Ticks are saved as you go.

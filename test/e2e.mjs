@@ -256,6 +256,20 @@ assert.match(await page.textContent('.saw-bar b'), /^0 \//);
   await page.setViewportSize({ width: 390, height: 844 });
 }
 
+// Looking for tips doesn't hold the page up. A material of more than 60 sheet pieces gets none (a quick solve of it
+// takes a phone too long); smaller ones are checked one quick solve at a time, while the page is idle.
+{
+  const parts = Array.from({ length: 8 }, (_, i) => ({ name: 'Drawer part ' + (i + 1), qty: 35, len: 10 + i * 3.5, wid: 6 + i * 1.25, grain: i % 2 === 0 }));
+  await open(saved(project('Shop drawers', [sheet('½ plywood', [{ len: 96, wid: 48, price: 44 }, { len: 48, wid: 48, price: 26 }], parts)])));
+  const longest = await page.evaluate(() => new Promise(done => {
+    let max = 0;
+    const o = new PerformanceObserver(list => list.getEntries().forEach(e => { max = Math.max(max, e.duration); }));
+    o.observe({ type: 'longtask' });
+    setTimeout(() => { o.disconnect(); done(max); }, 3000);
+  }));
+  assert.ok(longest < 200, `looking for tips held the page up for ${Math.round(longest)} ms`);
+}
+
 // Deleting takes two separate taps: a double tap only asks.
 {
   const keep = project('Keep me', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);
