@@ -215,6 +215,16 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   assert.deepEqual(problems.slice(before), [], 'damaged storage stopped the page');
   await open(saved(project('Fine', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])])));
   assert.equal(await badCopy(), null, 'a good save was kept as damaged');
+  // When storage is too full to keep the damaged copy, the projects are still saved.
+  await page.evaluate(() => {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) { if (k === 'kerf.v1.bad') throw new DOMException('full', 'QuotaExceededError'); return set.call(this, k, v); };
+    const db = JSON.parse(localStorage.getItem('kerf.v1') || 'null') || { projects: {}, order: [] };
+    localStorage.setItem('kerf.v1', JSON.stringify({ ...db, order: 'damaged' }));
+  });
+  await page.fill('#pname', 'Saved anyway');
+  await page.waitForFunction(() => (localStorage.getItem('kerf.v1') || '').includes('Saved anyway'), null, { timeout: 3000 })
+    .catch(() => assert.fail('the projects weren’t saved when the damaged copy couldn’t be kept'));
 }
 
 // Two windows open at once keep each other's work: a project added in one isn't undone when the other saves, nor

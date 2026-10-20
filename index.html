@@ -522,7 +522,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         var raw = localStorage.getItem(LS);
         if (raw != null && raw !== written) {
           var got = null; try { got = repairDB(JSON.parse(raw)); } catch (e) { }
-          if (!got || got.lost) localStorage.setItem(LS + '.bad', raw);
+          if (!got || got.lost) try { localStorage.setItem(LS + '.bad', raw); } catch (e) { } // a full store still saves the projects
           if (got) { mergeDB(got.db); adopt(); }
         }
         localStorage.setItem(LS, written = JSON.stringify(DB));
