@@ -44,7 +44,7 @@ Settings per project: saw kerf (⅛″ by default), trimming each board end squa
 
 The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing is a heuristic, not a proof: it is good, not guaranteed optimal.
 
-Every search stops after a set number of steps, not after a set time, so a project gets the same plan on a fast laptop and a slow phone, and the ticks at the saw stay put.
+Every search stops after a set number of steps, not after a set time, so a project gets the same plan on a fast laptop and a slow phone, and the ticks at the saw stay put. Sheets take the longest: a ¾ plywood job of up to 50 pieces takes about a tenth of a second on a laptop, and about a third of a second (at most three quarters) on a phone five times slower.
 
 ## Planning a build with Claude
 
@@ -86,7 +86,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - **Parsing:** lengths in each format parse to the right value.
 - **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths. Boards on hand that run short are reported, not left to crash.
 - **Big jobs:** a 90-piece job finishes quickly, and 800 pieces in 16 lengths don't run the search out of stack.
-- **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned. More than 300 of one part is reported, not quietly left out.
+- **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned. More than 300 of one part is reported, not quietly left out. Two ¾ plywood jobs that cost more when the shuffle had half the work come out as cheap as the old time limit found them.
 - **Same plan anywhere:** with the clock slowed to a crawl, the example, a bigger board job and a plywood cabinet come out exactly as they do at full speed.
 
 `test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, when Kerf saves, two windows open at once, and damaged storage. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.

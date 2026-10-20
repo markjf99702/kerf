@@ -569,9 +569,12 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 
   // ---------- boards: one-dimensional cutting ----------
   // How long each search goes on, in steps of work rather than milliseconds, so a project gets the same plan
-  // on any device, however slow or busy. A step takes about a sixth of a microsecond on a laptop; on a slow
-  // phone a full solve stops after about a third of a second, and a quick one (for tips) well under a tenth.
-  var EFFORT = { exact: 150000, boards: 400000, quickExact: 30000, quickBoards: 80000, shake: 600000 };
+  // on any device, however slow or busy. A board step takes about a sixth of a microsecond on a laptop, a sheet
+  // step about half that. On a phone five times slower a full solve stops after about a third of a second (a
+  // sheet job after up to three quarters), and a quick one (for tips) well under a tenth. Shuffling sheet orders
+  // gets the most: with half as much, 1 in 10 random ¾ plywood jobs cost more than the old 120 ms limit found
+  // on a laptop; with this much, 1 or 2 in 100 still do.
+  var EFFORT = { exact: 150000, boards: 400000, quickExact: 30000, quickBoards: 80000, shake: 1200000 };
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // The fullest pattern of pieces that fits `cap` (kerf between pieces), as counts per distinct length.
   // With `lead`, the pattern must include the longest piece still to cut.

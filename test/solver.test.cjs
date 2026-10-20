@@ -140,6 +140,23 @@ console.log('sheets: more than 300 of one part');
   check(r.errors.length === 1 && r.errors[0].pi === 0 && r.errors[0].max === 300, '400 pegs: the plan doesn’t say it’s short: ' + JSON.stringify(r.errors.map(e => ({ pi: e.pi, max: e.max }))));
 }
 
+console.log('sheets: shuffling long enough to find the cheaper plan');
+{
+  // Two random ¾ plywood jobs, with full, half and quarter sheets for sale as the ¾ plywood preset has, that cost more
+  // than the old 120 ms limit found on a laptop when the shuffle had half the work it has now: one bought a full
+  // sheet where a half would do, the other an extra half sheet.
+  const stock = [{ len: 96, wid: 48, price: 58, have: 0 }, { len: 48, wid: 48, price: 34, have: 0 }, { len: 48, wid: 24, price: 21, have: 0 }];
+  const jobs = [
+    [150, 174, [{ len: 22.25, wid: 13.25, qty: 8, grain: true }, { len: 19.5, wid: 28.875, qty: 5, grain: false }, { len: 26.75, wid: 25.375, qty: 6, grain: false }]],
+    [290, 324, [{ len: 27.25, wid: 12.5, qty: 8, grain: true }, { len: 13, wid: 26.375, qty: 5, grain: false }, { len: 43.75, wid: 31.25, qty: 6, grain: true },
+      { len: 25.25, wid: 27.25, qty: 4, grain: false }, { len: 42, wid: 27.875, qty: 2, grain: true }]],
+  ];
+  for (const [want, was, parts] of jobs) {
+    const r = K.solveSheets({ stock, parts }, { kerf: 0.125 });
+    check(Math.abs(r.cost - want) < 1e-6, `${parts.reduce((a, p) => a + p.qty, 0)} pieces of plywood cost $${r.cost}, want $${want} (half the shuffling bought $${was})`);
+  }
+}
+
 console.log('sheets: random jobs, every layout checked');
 {
   const R = rng(11), kerf = 0.125; let n = 0;
