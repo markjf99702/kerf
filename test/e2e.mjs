@@ -194,6 +194,66 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   assert.equal(await badCopy(), null, 'a good save was kept as damaged');
 }
 
+// Two windows open at once keep each other's work: a project added in one isn't undone when the other saves, nor
+// brought back once deleted, a tick in one and an edit in the other are both kept, and an edit still waiting to
+// be saved isn't lost when the other window saves.
+{
+  const shelves = project('Shelves', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);
+  await open(saved(shelves));
+  const other = await ctx.newPage();
+  other.on('pageerror', e => problems.push('second window: ' + e.message));
+  await other.goto(base);
+  await other.waitForSelector('#planOut > *', { state: 'attached' });
+  const names = async () => Object.values((await stored()).projects).map(p => p.name).sort();
+  const storedHas = (win, text) => win.waitForFunction(t => (localStorage.getItem('kerf.v1') || '').includes(t), text, { timeout: 5000 });
+
+  await other.click('#projBtn');
+  await other.click('#pjNew');
+  await other.fill('#pname', 'Bench');
+  await storedHas(other, 'Bench');
+  await page.fill('#pname', 'Garage shelves');
+  await storedHas(page, 'Garage shelves');
+  assert.deepEqual(await names(), ['Bench', 'Garage shelves'], 'a save in one window undid a project added in the other');
+  await page.click('#projBtn');
+  assert.deepEqual(await page.$$eval('#sheet .pitem b', bs => bs.map(b => b.textContent).sort()), ['Bench', 'Garage shelves'], 'Projects doesn’t show the other window’s project');
+  await page.click('#pjx');
+
+  await other.click('#projBtn');
+  await other.click('#sheet .btn.danger');
+  await other.waitForTimeout(600);
+  await other.click('#sheet .btn.danger');
+  await other.waitForFunction(() => !localStorage.getItem('kerf.v1').includes('Bench'));
+  await page.fill('#pname', 'Garage shelves 2');
+  await storedHas(page, 'Garage shelves 2');
+  assert.deepEqual(await names(), ['Garage shelves 2'], 'a project deleted in one window came back from the other');
+
+  await view('saw');
+  await other.click('#tabs button[data-t="saw"]');
+  await other.locator('#sawOut .cut[data-k]').first().click();
+  await page.waitForFunction(() => document.querySelector('.saw-bar b').textContent === '1 / 2', null, { timeout: 5000 })
+    .catch(() => assert.fail('a tick in one window doesn’t show in the other'));
+  await page.fill('#pname', 'Garage shelves 3');
+  await storedHas(page, 'Garage shelves 3');
+  assert.deepEqual([(await stored()).projects[shelves.id].name, (await stored()).projects[shelves.id].done], ['Garage shelves 3', { '0.0': 1 }], 'an edit in one window undid a tick in the other');
+
+  // Another window's save arriving while an edit here waits for typing to stop (written and announced at once).
+  await page.waitForTimeout(600);
+  await other.close();
+  const waiting = await page.evaluate(() => {
+    const i = document.getElementById('pname'); i.value = 'Typed just now'; i.dispatchEvent(new Event('input', { bubbles: true }));
+    const db = JSON.parse(localStorage.getItem('kerf.v1'));
+    db.projects.desk = { id: 'desk', name: 'Desk', units: 'in', kerf: 0.125, trim: 0, keep: 12, cur: '$', updated: Date.now() - 1000, materials: [], done: {} };
+    db.order.unshift('desk');
+    const text = JSON.stringify(db);
+    localStorage.setItem('kerf.v1', text);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kerf.v1', newValue: text }));
+    return !localStorage.getItem('kerf.v1').includes('Typed just now');
+  });
+  assert.ok(waiting, 'the edit was saved before the other window’s save arrived');
+  await storedHas(page, 'Typed just now');
+  assert.deepEqual(await names(), ['Desk', 'Typed just now'], 'an edit waiting to be saved was lost when another window saved');
+}
+
 // The Source menu offers every count on hand from 1 to 10, the range a planner link can carry.
 await open(saved(project('Offcuts', [board('2×4', [{ len: 96, price: 4.28 }, { len: 40, have: 7 }], [{ name: 'Leg', qty: 2, len: 30 }])])));
 await view('list');

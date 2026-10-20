@@ -446,7 +446,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   }
 
   // ---------- storage (this browser only; projects export as files) ----------
-  var LS = 'kerf.v1', DB = { projects: {}, order: [], current: null, tab: 'plan', rtab: 'plan' }, kept = false;
+  var LS = 'kerf.v1', DB = { projects: {}, order: [], current: null, tab: 'plan', rtab: 'plan', deleted: {} }, kept = false;
   // Only Kerf writes kerf.v1, but a browser add-on, a hand edit or a half-written save could leave something the
   // page would stop on. So what's stored is checked as it's read: each field of the wrong type is repaired, and
   // anything that isn't a project, material, size or part at all is dropped. Values aren't clamped, the way an
@@ -486,8 +486,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     if (!Array.isArray(o.order) || order.length < o.order.length) lost = true;
     Object.keys(projects).forEach(function (id) { if (order.indexOf(id) < 0) { order.push(id); lost = true; } }); // still in Projects
     if (!order.length) return null;
-    var tab = ['list', 'plan', 'saw'].indexOf(o.tab) >= 0 ? o.tab : 'plan', rtab = o.rtab === 'saw' ? 'saw' : 'plan';
-    return { db: { projects: projects, order: order, current: projects.hasOwnProperty(o.current) ? o.current : order[0], tab: tab, rtab: rtab }, lost: lost };
+    var tab = ['list', 'plan', 'saw'].indexOf(o.tab) >= 0 ? o.tab : 'plan', rtab = o.rtab === 'saw' ? 'saw' : 'plan', deleted = {};
+    if (obj(o.deleted)) Object.keys(o.deleted).forEach(function (id) { if (goodId(id) && num(o.deleted[id])) deleted[id] = o.deleted[id]; else lost = true; });
+    else if (o.deleted !== undefined) lost = true; // saves from before deletions were remembered have none
+    return { db: { projects: projects, order: order, current: projects.hasOwnProperty(o.current) ? o.current : order[0], tab: tab, rtab: rtab, deleted: deleted }, lost: lost };
   }
   // What can't be read, or had to be repaired, is kept as it was under kerf.v1.bad; Kerf then starts on what it
   // could read, or on the example.
@@ -504,17 +506,62 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   // Nothing is written until something really changes; which view is showing (`view`) doesn't count until
   // this browser keeps projects. So a first visit that only looks around leaves storage empty, and carry.js
   // can still bring projects over from junkdrawer.works/kerf/ on a later visit.
-  var saveT, pending = false;
+  // Before writing, it takes in whatever another window has saved since (mergeDB), so two windows open at
+  // once don't undo each other's new projects, edits or deletions.
+  var saveT, pending = false, written = null;
   function save(now, view) {
     if (view && !kept) return;
     clearTimeout(saveT);
-    var go = function () { pending = false; kept = true; try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { } };
+    var go = function () {
+      pending = false; kept = true;
+      try {
+        var raw = localStorage.getItem(LS);
+        if (raw != null && raw !== written) {
+          var got = null; try { got = repairDB(JSON.parse(raw)); } catch (e) { }
+          if (!got || got.lost) localStorage.setItem(LS + '.bad', raw);
+          if (got) { mergeDB(got.db); adopt(); }
+        }
+        localStorage.setItem(LS, written = JSON.stringify(DB));
+      } catch (e) { }
+    };
     if (now) go(); else { pending = true; saveT = setTimeout(go, 350); }
   }
   // When the page is hidden or closed, a save still waiting for typing to stop is written straight away.
   // Only then: a tab that changed nothing mustn't write its copy over what another tab has saved since.
   function flush() { if (pending) save(true); }
-  function touch() { P.updated = Date.now(); save(); }
+  // A change makes its project the newer copy, even within the same millisecond as another window's.
+  function touch() { P.updated = Math.max(Date.now(), (P.updated || 0) + 1); save(); }
+  // Takes in another window's save: projects it has that this one doesn't, the newer copy of each project both
+  // have, and its deletions, which win over copies not changed since. `deleted` remembers when each project was
+  // deleted, so a window that still has it doesn't bring it back.
+  function mergeDB(o) {
+    var del = DB.deleted;
+    Object.keys(o.deleted).forEach(function (id) { if (!(del[id] >= o.deleted[id])) del[id] = o.deleted[id]; });
+    Object.keys(o.projects).forEach(function (id) { var m = DB.projects[id], t = o.projects[id]; if (!m || t.updated > m.updated) DB.projects[id] = t; });
+    Object.keys(DB.projects).forEach(function (id) { if (del[id] >= DB.projects[id].updated) delete DB.projects[id]; });
+    DB.order = o.order.filter(function (id) { return DB.order.indexOf(id) < 0; }).concat(DB.order).filter(function (id, i, a) { return DB.projects.hasOwnProperty(id) && a.indexOf(id) === i; });
+    Object.keys(DB.projects).forEach(function (id) { if (DB.order.indexOf(id) < 0) DB.order.push(id); });
+  }
+  // After a merge: show the newer copy of the open project, or another project if it was deleted elsewhere.
+  function adopt() {
+    if (DB.projects[DB.current] !== P) {
+      var gone = !DB.projects[DB.current], name = P.name;
+      if (gone) {
+        if (!DB.order.length) { var ex = sampleProject(); DB.projects[ex.id] = ex; DB.order = [ex.id]; }
+        DB.current = DB.order[0];
+        closeSheet(); // Projects' Delete button may be armed for the project that's gone
+      }
+      P = DB.projects[DB.current]; applyProject();
+      if (gone) toast('“' + name + '” was deleted in another window');
+    }
+    drawProjects();
+  }
+  // Another window saved: take its changes in now, keeping anything here that's newer or still waiting to save.
+  window.addEventListener('storage', function (e) {
+    if (e.key !== LS || e.newValue == null) return;
+    var got = null; try { got = repairDB(JSON.parse(e.newValue)); } catch (err) { }
+    if (got) { mergeDB(got.db); adopt(); }
+  });
 
   // ---------- boards: one-dimensional cutting ----------
   // How long each search goes on, in steps of work rather than milliseconds, so a project gets the same plan
@@ -1276,9 +1323,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     });
     host.innerHTML = h;
     // The list is drawn again after each tick, so focus goes back to the same cut (or the first, after Start over).
+    // A tick changes the project like any edit, so another open window keeps it.
     var refocus = function (k) { var c = host.querySelector('.cut[data-k' + (k ? '="' + k + '"' : '') + ']'); if (c) c.focus({ preventScroll: true }); };
-    host.querySelectorAll('.cut[data-k]').forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.k; if (P.done[k]) delete P.done[k]; else P.done[k] = 1; save(); renderSaw(); refocus(k); }); });
-    var rs = $('sawReset'); if (rs) rs.addEventListener('click', function () { P.done = {}; save(); renderSaw(); refocus(); });
+    host.querySelectorAll('.cut[data-k]').forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.k; if (P.done[k]) delete P.done[k]; else P.done[k] = 1; touch(); renderSaw(); refocus(k); }); });
+    var rs = $('sawReset'); if (rs) rs.addEventListener('click', function () { P.done = {}; touch(); renderSaw(); refocus(); });
   }
 
   // ---------- views ----------
@@ -1363,14 +1411,6 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       '<div class="fld"><span>Move a project between devices</span><div class="row"><button class="btn sec sm" type="button" id="pjExport">Save this project as a file</button><button class="btn sec sm" type="button" id="pjCopy">Copy as text</button><label class="btn sec sm" style="cursor:pointer">Open a project file<input type="file" id="pjFile" accept=".json,.kerf,application/json,text/plain" hidden></label></div>' +
       '<textarea id="pjPaste" placeholder="…or paste a project’s text here"></textarea></div>' +
       '<p class="note">Projects are saved in this browser on this device. To use one on another phone or computer, save it as a file or copy it as text, then open or paste it there.</p></div>');
-    function draw() {
-      $('pjList').innerHTML = DB.order.map(function (id) {
-        var p = DB.projects[id]; if (!p) return '';
-        var n = p.materials.reduce(function (a, m) { return a + m.parts.length; }, 0);
-        return '<button class="pitem' + (id === P.id ? ' on' : '') + '" type="button" data-id="' + id + '"><b>' + esc(p.name) + '</b><span>' + plural(n, 'part') + ' · ' + new Date(p.updated).toLocaleDateString() + '</span></button>';
-      }).join('') + (DB.order.length > 1 ? '' : '');
-      $('pjList').querySelectorAll('.pitem').forEach(function (b) { b.addEventListener('click', function () { DB.current = b.dataset.id; P = DB.projects[DB.current]; save(true); closeSheet(); applyProject(); }); });
-    }
     $('pjNew').addEventListener('click', function () { newProject(); });
     $('pjDup').addEventListener('click', function () { var c = JSON.parse(JSON.stringify(P)); c.id = uid(); c.name = P.name.replace(/ \(example\)$/, '') + ' copy'; c.example = false; c.updated = Date.now(); DB.projects[c.id] = c; DB.order.unshift(c.id); DB.current = c.id; P = c; save(true); closeSheet(); applyProject(); toast('Duplicated'); });
     $('pjExport').addEventListener('click', function () { saveFile(fileName('kerf.json'), JSON.stringify({ kerf: 1, project: P }, null, 1), 'application/json').then(function (ok) { if (ok) toast('Saved ' + fileName('kerf.json')); }, function (e) { toast(e.message || 'Couldn’t save the file — use Copy as text'); }); });
@@ -1384,12 +1424,23 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     del.addEventListener('click', function () {
       if (del.dataset.armed !== '1') { del.dataset.armed = '1'; delAt = Date.now(); del.textContent = 'Tap again to delete “' + P.name + '”'; return; }
       if (Date.now() - delAt < 500) return; // a double tap only asks
+      DB.deleted[P.id] = Math.max(Date.now(), (P.updated || 0) + 1); // so another open window doesn't bring it back
       delete DB.projects[P.id]; DB.order = DB.order.filter(function (id) { return id !== P.id && DB.projects[id]; });
       if (!DB.order.length) { var ex = sampleProject(); ex.example = true; DB.projects[ex.id] = ex; DB.order = [ex.id]; }
       DB.current = DB.order[0]; P = DB.projects[DB.current]; save(true); closeSheet(); applyProject(); toast('Deleted');
     });
     $('pjList').parentNode.insertBefore(del, $('pjList').nextSibling);
-    draw();
+    drawProjects();
+  }
+  // The list in Projects, when it's open; drawn again when another window saves.
+  function drawProjects() {
+    var host = $('pjList'); if (!host) return;
+    host.innerHTML = DB.order.map(function (id) {
+      var p = DB.projects[id]; if (!p) return '';
+      var n = p.materials.reduce(function (a, m) { return a + m.parts.length; }, 0);
+      return '<button class="pitem' + (id === P.id ? ' on' : '') + '" type="button" data-id="' + id + '"><b>' + esc(p.name) + '</b><span>' + plural(n, 'part') + ' · ' + new Date(p.updated).toLocaleDateString() + '</span></button>';
+    }).join('');
+    host.querySelectorAll('.pitem').forEach(function (b) { b.addEventListener('click', function () { DB.current = b.dataset.id; P = DB.projects[DB.current]; save(true); closeSheet(); applyProject(); }); });
   }
   // Take only what Kerf knows, as the types it expects; a hand-edited file or a link can't break the page.
   function cleanProject(o) {
@@ -1448,7 +1499,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           : '<div class="row"><button class="btn tape" type="button" id="lkAdd">Add to my projects</button></div><p class="note">It comes in as a new project; nothing you already have changes. Check the prices — they’re whatever the link came with.</p>') + '</div>');
       $('lkx').addEventListener('click', closeSheet);
       $('lkAdd').addEventListener('click', function () { addProject(p); });
-      if (had) $('lkOpen').addEventListener('click', function () { DB.current = had; P = DB.projects[had]; save(true); closeSheet(); applyProject(); });
+      if (had) $('lkOpen').addEventListener('click', function () {
+        if (!DB.projects[had]) { addProject(p); return; } // deleted in another window meanwhile
+        DB.current = had; P = DB.projects[had]; save(true); closeSheet(); applyProject();
+      });
     }).catch(function (e) { toast(e && /browser/.test(e.message) ? e.message : 'That link doesn’t hold a Kerf project'); });
   }
 

@@ -21,7 +21,7 @@
 - **Grain.** Sheet parts can be locked so the grain runs along their length; unlocked parts may be turned to fit better.
 - **At the saw.** Each board and sheet becomes a checklist in cutting order, with where to measure from. Ticks are saved as you go.
 - **Shop PDF.** A printable sheet with the shopping list and every diagram.
-- **Projects** are kept in the browser's local storage, with no account and no server. To move one to another device, save it as a file or copy it as text, then open or paste it there.
+- **Projects** are kept in the browser's local storage, with no account and no server. To move one to another device, save it as a file or copy it as text, then open or paste it there. With Kerf open in two windows, a project added, changed or deleted in one shows up in the other.
 
 Settings per project: saw kerf (⅛″ by default), trimming each board end square, the smallest offcut worth keeping, and the currency sign. The preset prices are examples; change them to what your store charges.
 
@@ -89,7 +89,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned. More than 300 of one part is reported, not quietly left out.
 - **Same plan anywhere:** with the clock slowed to a crawl, the example, a bigger board job and a plywood cabinet come out exactly as they do at full speed.
 
-`test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, when Kerf saves, and damaged storage. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
+`test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, when Kerf saves, two windows open at once, and damaged storage. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
 
 ### Files
 
