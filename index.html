@@ -27,7 +27,7 @@
 @font-face{font-family:"JetBrains Mono";src:url(fonts/jetbrains-mono.woff2) format("woff2");font-weight:400 700;font-display:swap}
 :root{
   --ground:#F2F4F0;--grid:#E2E6DF;--surface:#FFFFFF;--surface2:#EDF0EB;--sunk:#E6E9E3;
-  --ink:#1C1F22;--ink2:#50575E;--ink3:#80878E;--line:#D6DAD3;--line2:#B9BFB7;
+  --ink:#1C1F22;--ink2:#50575E;--ink3:#686D73;--line:#D6DAD3;--line2:#B9BFB7;
   --tape:#F2C200;--tape-ink:#1C1F22;--tape-soft:#FAEAA6;
   --chalk:#2361CC;--chalk-soft:#DCE6F8;
   --pine:#EBD3A6;--pine2:#D9B880;--pine-edge:#B08447;--ply:#E8D7B2;--ply-edge:#9E7F52;
@@ -42,7 +42,7 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
   --ground:#121416;--grid:#1B1E21;--surface:#1A1D20;--surface2:#212529;--sunk:#16181B;
-  --ink:#E9ECEE;--ink2:#A9B0B6;--ink3:#79818A;--line:#2B3035;--line2:#3D444B;
+  --ink:#E9ECEE;--ink2:#A9B0B6;--ink3:#848D96;--line:#2B3035;--line2:#3D444B;
   --tape:#F2C200;--tape-ink:#15171A;--tape-soft:#3F3510;
   --chalk:#7AA8FF;--chalk-soft:#1B2944;
   --pine:#C9AB78;--pine2:#B18F5A;--pine-edge:#7E5F31;--ply:#C3AA7E;--ply-edge:#7C6039;
@@ -53,7 +53,7 @@
 :root[data-theme="dark"]{
   color-scheme:dark;
   --ground:#121416;--grid:#1B1E21;--surface:#1A1D20;--surface2:#212529;--sunk:#16181B;
-  --ink:#E9ECEE;--ink2:#A9B0B6;--ink3:#79818A;--line:#2B3035;--line2:#3D444B;
+  --ink:#E9ECEE;--ink2:#A9B0B6;--ink3:#848D96;--line:#2B3035;--line2:#3D444B;
   --tape:#F2C200;--tape-ink:#15171A;--tape-soft:#3F3510;
   --chalk:#7AA8FF;--chalk-soft:#1B2944;
   --pine:#C9AB78;--pine2:#B18F5A;--pine-edge:#7E5F31;--ply:#C3AA7E;--ply-edge:#7C6039;
@@ -203,7 +203,7 @@ div.sec{margin-top:22px}
 .dg-lblb{fill:#2E220F;font:700 12px var(--mono);dominant-baseline:central}
 .dg-meta{fill:var(--ink2);font:500 12px var(--mono);dominant-baseline:central}
 .dg-metab{fill:var(--ink);font:700 12px var(--mono);dominant-baseline:central}
-.dg-scrapt{fill:var(--ink3);font:500 11px var(--mono);dominant-baseline:central}
+.dg-scrapt{fill:var(--ink2);font:500 11px var(--mono);dominant-baseline:central}
 .dg-tape{fill:var(--tape)}
 .dg-tick{stroke:var(--tape-ink);stroke-width:1}
 .dg-ticklbl{fill:var(--tape-ink);font:700 9px var(--mono);dominant-baseline:central}
@@ -1573,9 +1573,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     rect(M, y, 58, 22, '#F2C200'); text('HB', 15, M + 8, y + 16, 'KERF');
     text('HB', 16, M + 70, y + 16, fitText('HB', 16, P.name, PW - M - totW - 16 - (M + 70))); // stops short of the total
     text('H', 9, M + 70, y + 29, 'Kerf ' + fmt(P.kerf) + (P.trim ? ' · trim ' + fmt(P.trim) + ' per end' : '') + ' · ' + new Date().toLocaleDateString());
-    text('HB', 22, PW - M - totW, y + 18, tot); text('H', 8, PW - M - textW('H', 8, 'TO BUY'), y + 29, 'TO BUY', '#80878E');
+    text('HB', 22, PW - M - totW, y + 18, tot); text('H', 8, PW - M - textW('H', 8, 'TO BUY'), y + 29, 'TO BUY', '#686D73');
     y += 46;
-    text('HB', 10, M, y, 'SHOPPING LIST', '#80878E'); y += 8;
+    text('HB', 10, M, y, 'SHOPPING LIST', '#686D73'); y += 8;
     RES.mats.forEach(function (m) {
       if (!m.items.length) return;
       need(30); y += 12; text('HB', 11, M, y, fitText('HB', 11, m.mat.name + (m.mat.note ? '  (' + m.mat.note + ')' : ''), PW - 2 * M));

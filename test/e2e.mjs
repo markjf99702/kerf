@@ -433,6 +433,23 @@ assert.ok(await page.evaluate(() => {
 await open(saved(project('Offcut', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 1, len: 72 }])])));
 assert.deepEqual(await page.$$eval('#planOut .dg-scrapt', ts => ts.map(t => [t.textContent, t.getBBox().width <= t.previousElementSibling.width.baseVal.value - 2])), [['23 7/8"', true]], 'the offcut label');
 
+// Muted labels read at 4.5:1 or better on the page, the cards and the grey strips, and offcut labels on their
+// hatching, in light and dark.
+for (const scheme of ['light', 'dark']) {
+  await page.emulateMedia({ colorScheme: scheme });
+  const contrast = await page.evaluate(() => {
+    const rgb = s => s.startsWith('#') ? [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)) : s.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const lum = s => { const c = rgb(s).map(x => x / 255).map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const token = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+    const muted = getComputedStyle(document.querySelector('.total-lbl')).color, offcut = getComputedStyle(document.querySelector('.dg-scrapt')).fill;
+    return { muted: Math.min(...['--surface', '--ground', '--surface2'].map(b => ratio(muted, token(b)))), offcut: ratio(offcut, token('--scrap')) };
+  });
+  assert.ok(contrast.muted >= 4.5, `muted labels are ${contrast.muted.toFixed(2)}:1 in ${scheme}`);
+  assert.ok(contrast.offcut >= 4.5, `offcut labels are ${contrast.offcut.toFixed(2)}:1 on their hatching in ${scheme}`);
+}
+await page.emulateMedia({ colorScheme: null });
+
 // Kerf plans up to 500 of a part: a bigger quantity is marked, and becomes 500 when you leave the field.
 await open(saved(project('Pegs', [board('1×2', [{ len: 96, price: 2.98 }], [{ name: 'Peg', qty: 2, len: 3 }])])));
 await view('list');
