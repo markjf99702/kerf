@@ -439,7 +439,7 @@ assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out.
 
 // Kerf plans at most 300 of one sheet part: past that, the plan says parts are left out and the cut list says why.
 await open(saved(project('Pegboard', [sheet('¼ plywood', [{ len: 96, wid: 48, price: 28 }], [{ name: 'Peg', qty: 400, len: 4, wid: 4, grain: false }])])));
-assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¼ plywood has more than 300 of 1 part — see the cut list.');
+assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¼ plywood has 1 part with more than 300 pieces — see the cut list.');
 await view('list');
 assert.equal(await page.textContent('.perr'), 'Peg × 400: Kerf plans at most 300 of one sheet part — split it into two rows.');
 

@@ -1139,7 +1139,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       var big = m.errors.filter(function (e) { return e.pi >= 0 && !e.max; }).length, many = m.errors.filter(function (e) { return e.max; });
       var rest = m.errors.some(function (e) { return e.pi < 0; }), has = [];
       if (big) has.push(plural(big, 'part') + ' too big for any size listed');
-      if (many.length) has.push('more than ' + many[0].max + ' of ' + plural(many.length, 'part'));
+      if (many.length) has.push(plural(many.length, 'part') + ' with more than ' + many[0].max + ' pieces');
       return esc(m.mat.name) + (has.length ? ' has ' + has.join(' and ') + (rest ? ', and the rest don’t fit together on the stock listed' : '') : ': these parts don’t fit together on any stock listed');
     }).join('; ') + ' — see the cut list.</div>' : '';
   }
