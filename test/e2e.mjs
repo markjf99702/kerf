@@ -287,6 +287,12 @@ await open(saved(project('Left out', [board('2×4', [{ len: 96, price: 4.28 }], 
   board('4×4', [{ len: 96, price: 11.98 }], [{ name: 'Post', qty: 1, len: 120 }])])));
 assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¾ plywood: these parts don’t fit together on any stock listed; 4×4 has 1 part too big for any size listed — see the cut list.');
 
+// Kerf plans at most 300 of one sheet part: past that, the plan says parts are left out and the cut list says why.
+await open(saved(project('Pegboard', [sheet('¼ plywood', [{ len: 96, wid: 48, price: 28 }], [{ name: 'Peg', qty: 400, len: 4, wid: 4, grain: false }])])));
+assert.equal(await page.textContent('#planOut .warn'), 'Some parts are left out. ¼ plywood has more than 300 of 1 part — see the cut list.');
+await view('list');
+assert.equal(await page.textContent('.perr'), 'Peg × 400: Kerf plans at most 300 of one sheet part — split it into two rows.');
+
 // An empty plan points to the cut list (a phone has no left side), and when every part is left out it says why.
 await open(saved(project('Nothing yet', [])));
 assert.match(await page.textContent('#planOut .empty'), /^Nothing to cut yet\.Add a material in the cut list, then the parts you need from it/);

@@ -132,6 +132,14 @@ console.log('sheets: two half sheets beat one full sheet');
   check(Math.abs(r.cost - 48) < 1e-6, `bench seat and shelf cost $${r.cost}, want $48 (two half sheets)`);
 }
 
+console.log('sheets: more than 300 of one part');
+{
+  // Kerf packs at most 300 of a sheet part. The rest used to be left out without a word, so the plan under-bought.
+  const r = K.solveSheets({ stock: [{ len: 96, wid: 48, price: 58, have: 0 }], parts: [{ len: 4, wid: 4, qty: 400, grain: false }] }, { kerf: 0.125 });
+  check(r.items.reduce((a, s) => a + s.placed.length, 0) === 300, '400 pegs: placed ' + r.items.reduce((a, s) => a + s.placed.length, 0) + ', want 300');
+  check(r.errors.length === 1 && r.errors[0].pi === 0 && r.errors[0].max === 300, '400 pegs: the plan doesn’t say it’s short: ' + JSON.stringify(r.errors.map(e => ({ pi: e.pi, max: e.max }))));
+}
+
 console.log('sheets: random jobs, every layout checked');
 {
   const R = rng(11), kerf = 0.125; let n = 0;

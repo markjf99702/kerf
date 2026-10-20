@@ -717,6 +717,8 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       if (!(p.len > 0) || !(p.wid > 0) || !(p.qty > 0)) return;
       var it = { pi: pi, l: p.len, w: p.wid, rot: !p.grain };
       if (!stocks.some(function (st) { return fitsStock(it, st); })) { out.errors.push({ pi: pi, part: p }); return; }
+      // Packing more than 300 of one part takes a phone too long, so the rest are left out, and the cut list says so.
+      if (p.qty > 300) out.errors.push({ pi: pi, part: p, max: 300 });
       for (var i = 0; i < Math.min(p.qty, 300); i++) items.push({ pi: pi, l: p.len, w: p.wid, rot: !p.grain });
     });
     if (!items.length) return out;
@@ -898,6 +900,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       var el = document.querySelector('[data-err="' + r.mat.id + '"]'); if (!el) return;
       var msgs = r.errors.map(function (e) {
         if (e.pi < 0) return 'These parts don’t fit together on any stock listed.';
+        if (e.max) return (e.part.name || 'A part') + ' × ' + e.part.qty + ': Kerf plans at most ' + e.max + ' of one sheet part — split it into two rows.';
         var p = e.part, dims = r.kind === 'sheet' ? fmt(p.len) + ' × ' + fmt(p.wid) : fmt(p.len);
         return (p.name || 'A part') + ' (' + dims + ') won’t fit on any ' + (r.kind === 'sheet' ? 'sheet' : 'board') + ' listed below' + (r.kind === 'sheet' && p.grain ? ' with the grain along its length' : '') + '. Add a bigger size' + (r.kind === 'sheet' && p.grain ? ' or let it turn' : '') + '.';
       });
@@ -1021,12 +1024,16 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     $('copyList').addEventListener('click', copyList);
     renderTips();
   }
-  // Why parts are missing from the plan: too big for any size listed, or more than the stock on hand can hold.
+  // Why parts are missing from the plan: too big for any size listed, more of one sheet part than Kerf plans,
+  // or more than the stock on hand can hold.
   function leftOut(r) {
     var errs = r.mats.filter(function (m) { return m.errors.length; });
     return errs.length ? '<div class="warn"><b>Some parts are left out.</b> ' + errs.map(function (m) {
-      var big = m.errors.filter(function (e) { return e.pi >= 0; }).length, rest = big < m.errors.length;
-      return esc(m.mat.name) + (big ? ' has ' + plural(big, 'part') + ' too big for any size listed' + (rest ? ', and the rest don’t fit together on the stock listed' : '') : ': these parts don’t fit together on any stock listed');
+      var big = m.errors.filter(function (e) { return e.pi >= 0 && !e.max; }).length, many = m.errors.filter(function (e) { return e.max; });
+      var rest = m.errors.some(function (e) { return e.pi < 0; }), has = [];
+      if (big) has.push(plural(big, 'part') + ' too big for any size listed');
+      if (many.length) has.push('more than ' + many[0].max + ' of ' + plural(many.length, 'part'));
+      return esc(m.mat.name) + (has.length ? ' has ' + has.join(' and ') + (rest ? ', and the rest don’t fit together on the stock listed' : '') : ': these parts don’t fit together on any stock listed');
     }).join('; ') + ' — see the cut list.</div>' : '';
   }
   function shopLines(m) {
