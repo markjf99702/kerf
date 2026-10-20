@@ -21,7 +21,7 @@ function list(name) {
 function line(start) { const i = src.indexOf(start); return src.slice(i, src.indexOf('\n', i)); }
 const K = new Function([
   "var U = 'in';",
-  line('var VULGAR = '), line('var SPLITS = '), line('var MINR = '), list('SORTS'), list('FITS'),
+  line('var VULGAR = '), line('var EFFORT = '), line('var SPLITS = '), line('var MINR = '), list('SORTS'), list('FITS'),
   ...['esc', 'sixteenths', 'mmOf', 'fmt', 'fmtH', 'parseLen', 'mulberry', 'bestFill', 'solveBoards', 'orientations', 'newSheet',
     'placeIn', 'fitsStock', 'packRun', 'freeArea', 'evalSheets', 'sheetSteps', 'solveSheets'].map(fn),
   'return { parseLen: parseLen, fmt: fmt, fmtH: fmtH, solveBoards: solveBoards, solveSheets: solveSheets, units: function (u) { U = u; } };'
@@ -162,6 +162,34 @@ console.log('sheets: random jobs, every layout checked');
     check(r.items.every(sh => sh.steps.every(s => s.type === 'none' || (s.at > 0 && s.on))), `job ${t}: a cut step is incomplete`);
   }
   console.log('  ' + n + ' jobs');
+}
+
+console.log('the same plan on a slow or busy device');
+{
+  // Each search stops after a fixed amount of work, not time, so a clock that crawls (as on a slow phone, or a busy
+  // computer) changes nothing. With time limits, the example's 2×4s cost $43.94 instead of $42.64 when each look at
+  // the clock took a millisecond, and the layout of a bigger sheet job changed with the speed of the machine.
+  const plan = r => r.cost.toFixed(2) + ' ' + r.items.map(it => it.pieces
+    ? it.stock.len + ':' + it.pieces.map(p => p.pi + '@' + p.len).join(',')
+    : it.L + 'x' + it.W + ':' + it.placed.map(p => p.pi + '@' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + (p.rot ? 'r' : '')).join(',')).join(' | ');
+  const stock = LUMBER.map(s => ({ len: s[0], price: s[1], have: 0 }));
+  const sheets = [{ len: 96, wid: 48, price: 58, have: 0 }, { len: 48, wid: 48, price: 34, have: 0 }, { len: 48, wid: 24, price: 21, have: 0 }];
+  const jobs = [
+    ['the example 2×4s', () => K.solveBoards({ stock, parts: [{ len: 72, qty: 4 }, { len: 48, qty: 8 }, { len: 21, qty: 8 }] }, { kerf: 0.125, trim: 0 })],
+    ['the example 2×4s, quick (for tips)', () => K.solveBoards({ stock, parts: [{ len: 72, qty: 4 }, { len: 47.9375, qty: 8 }, { len: 21, qty: 8 }] }, { kerf: 0.125, trim: 0 }, true)],
+    ['14 lengths of 2×4', () => K.solveBoards({ stock, parts: Array.from({ length: 14 }, (_, i) => ({ len: 9.5 + i * 5.375, qty: 1 + i % 4 })) }, { kerf: 0.125, trim: 0 })],
+    ['a plywood cabinet', () => K.solveSheets({ stock: sheets, parts: [{ len: 34.5, wid: 23.25, qty: 4, grain: true }, { len: 30, wid: 23.25, qty: 2, grain: true }, { len: 30, wid: 4, qty: 4 },
+      { len: 28.5, wid: 11.25, qty: 6, grain: true }, { len: 33, wid: 15.75, qty: 2, grain: true }, { len: 15, wid: 6, qty: 8 }] }, { kerf: 0.125 })],
+  ];
+  const realNow = Date.now;
+  for (const [what, solve] of jobs) {
+    const usual = plan(solve());
+    let t = realNow(), slow;
+    Date.now = () => (t += 1);
+    try { slow = plan(solve()); } finally { Date.now = realNow; }
+    check(slow === usual, `${what}: a slow clock changed the plan\n    usual ${usual.slice(0, 120)}\n    slow  ${slow.slice(0, 120)}`);
+    if (what === 'the example 2×4s') check(slow.startsWith('42.64 '), `the example 2×4s cost $${slow.split(' ')[0]} with a slow clock, want $42.64`);
+  }
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall good');

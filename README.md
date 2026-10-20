@@ -33,16 +33,18 @@ Settings per project: saw kerf (⅛″ by default), trimming each board end squa
 2. When a job is too big for that search, Kerf falls back to heuristics:
    - a greedy fill by price per inch of parts;
    - a look-ahead that tries every first board and finishes greedily;
-   - randomized restarts, all within about a quarter second.
+   - randomized restarts.
 3. Each board then moves to the cheapest stock length its pieces still fit on.
 
 **Sheets** are cut with guillotine cuts only — every cut runs edge to edge across the piece, which is what a table saw or track saw can do. Kerf packs parts into free rectangles and tries:
 
 - several part orders, fit rules and split rules;
-- shuffled orders, for about 120 ms;
+- shuffled orders;
 - repacking each sheet's parts onto smaller sheet sizes when that costs less (two half sheets can beat one full one).
 
 The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing is a heuristic, not a proof: it is good, not guaranteed optimal.
+
+Every search stops after a set number of steps, not after a set time, so a project gets the same plan on a fast laptop and a slow phone, and the ticks at the saw stay put.
 
 ## Planning a build with Claude
 
@@ -83,6 +85,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths. Boards on hand that run short are reported, not left to crash.
 - **Big jobs:** a 90-piece job finishes quickly, and 800 pieces in 16 lengths don't run the search out of stack.
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned.
+- **Same plan anywhere:** with the clock slowed to a crawl, the example, a bigger board job and a plywood cabinet come out exactly as they do at full speed.
 
 `test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, and when Kerf saves. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
 

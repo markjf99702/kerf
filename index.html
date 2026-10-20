@@ -466,6 +466,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   function touch() { P.updated = Date.now(); save(); }
 
   // ---------- boards: one-dimensional cutting ----------
+  // How long each search goes on, in steps of work rather than milliseconds, so a project gets the same plan
+  // on any device, however slow or busy. A step takes about a sixth of a microsecond on a laptop; on a slow
+  // phone a full solve stops after about a third of a second, and a quick one (for tips) well under a tenth.
+  var EFFORT = { exact: 150000, boards: 400000, quickExact: 30000, quickBoards: 80000, shake: 600000 };
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // The fullest pattern of pieces that fits `cap` (kerf between pieces), as counts per distinct length.
   // With `lead`, the pattern must include the longest piece still to cut.
@@ -482,7 +486,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       x[i] = 0;
     })(0, 0);
     var pieces = 0, len = 0; if (bestX) for (i = 0; i < n; i++) { pieces += bestX[i]; len += bestX[i] * lens[i]; }
-    return { x: bestX, pieces: pieces, len: len, need: pieces ? len + (pieces - 1) * kerf : 0 };
+    return { x: bestX, pieces: pieces, len: len, need: pieces ? len + (pieces - 1) * kerf : 0, nodes: nodes };
   }
   function solveBoards(mat, cfg, quick) {
     var kerf = cfg.kerf, trim = cfg.trim || 0, out = { kind: 'board', mat: mat, items: [], errors: [], cost: 0 };
@@ -497,8 +501,10 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     if (!lens.length) return out;
     lens.sort(function (a, b) { return b.len - a.len; });
     var L = lens.map(function (g) { return g.len; }), C0 = lens.map(function (g) { return g.q.length; });
-    var rnd = mulberry(90210), best = null, memo = {}, t0 = Date.now(), budget = quick ? 40 : 250, total = C0.reduce(function (a, b) { return a + b; }, 0);
-    function fill(si, counts, lead) { var key = si + (lead ? 'L' : 'F') + counts.join(','), f = memo[key]; if (!f) f = memo[key] = bestFill(stocks[si].cap, L, counts, kerf, lead); return f; }
+    var rnd = mulberry(90210), best = null, memo = {}, work = 0, budget = quick ? EFFORT.quickBoards : EFFORT.boards, total = C0.reduce(function (a, b) { return a + b; }, 0);
+    // Steps of work, weighted to take about the same time each: a step of the exact search, a lookup here
+    // (6), a tenth of each step bestFill takes, and settling a board (10).
+    function fill(si, counts, lead) { work += 6; var key = si + (lead ? 'L' : 'F') + counts.join(','), f = memo[key]; if (!f) { f = memo[key] = bestFill(stocks[si].cap, L, counts, kerf, lead); work += f.nodes / 10; } return f; }
     function take(counts, x) { var c = counts.slice(); for (var j = 0; j < c.length; j++) c[j] -= x[j]; return c; }
     // Greedy: each board gets the pattern with the lowest price per inch of parts it yields.
     function greedy(counts, left, boards, noise, leadP) {
@@ -520,6 +526,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     }
     // Put each board on the cheapest stock its pieces still fit on.
     function settle(boards, left) {
+      work += 10 * boards.length;
       boards.sort(function (a, b) { return stocks[b.si].price - stocks[a.si].price; });
       boards.forEach(function (b) {
         left[b.si]++;
@@ -533,14 +540,14 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     }
     function consider(r) { if (r && (!best || r.cost < best.cost - 1e-6 || (Math.abs(r.cost - best.cost) < 1e-6 && (r.boards.length < best.boards.length || (r.boards.length === best.boards.length && r.waste < best.waste - 1e-6))))) best = r; }
     // Look ahead: try every first board, finish the job greedily, keep the cheapest start; repeat.
-    // Out of time, it finishes the rest greedily.
+    // Once the work allowed is done, it finishes the rest greedily.
     function pilot() {
       var counts = C0.slice(), left = stocks.map(function (st) { return st.left; }), boards = [], remain = counts.reduce(function (a, b) { return a + b; }, 0);
       while (remain > 0) {
-        if (Date.now() - t0 > budget) { var tail = greedy(counts, left, boards, 0, 0); return tail && settle(tail, left); }
+        if (work > budget) { var tail = greedy(counts, left, boards, 0, 0); return tail && settle(tail, left); }
         var pick = null;
         for (var si = 0; si < stocks.length; si++) {
-          if (left[si] <= 0 || (pick && Date.now() - t0 > budget)) continue;
+          if (left[si] <= 0 || (pick && work > budget)) continue;
           for (var ld = 0; ld < 2; ld++) {
             var f = fill(si, counts, !!ld); if (!f.pieces) continue;
             var l2 = left.slice(); l2[si]--;
@@ -560,7 +567,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     // So branch only on those boards, and remember the cheapest finish from each state.
     // Each board deeper nests up to n + 2 calls. Hundreds of boards of many lengths would run the
     // browser out of stack, and a search that deep can't finish anyway, so it gives up first.
-    function exact(maxStates, ms) {
+    function exact(maxStates, maxWork) {
       var n = L.length, w = L.map(function (l) { return l + kerf; }), memo = new Map(), states = 0, dead = false;
       var lim = []; stocks.forEach(function (st, si) { if (isFinite(st.left)) lim.push(si); });
       function f(r, lf, depth) {
@@ -568,7 +575,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         if (first < 0) return { cost: 0, n: 0 };
         var key = r.join(',') + (lim.length ? '|' + lim.map(function (si) { return lf[si]; }).join(',') : ''), got = memo.get(key);
         if (got) return got;
-        if (++states > maxStates || Date.now() - t0 > ms || depth * (n + 2) > 2000) dead = true;
+        if (++states > maxStates || work > maxWork || depth * (n + 2) > 2000) dead = true;
         var best = { cost: Infinity, n: Infinity };
         if (dead) return best;
         for (var si = 0; si < stocks.length && !dead; si++) {
@@ -577,6 +584,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           var x = r.map(function () { return 0; });
           (function dfs(i, used) {
             if (dead) return;
+            if (++work > maxWork) { dead = true; return; }
             if (i === n) {
               for (var j = first; j < n; j++) if (r[j] > x[j] && used + w[j] <= C + 1e-9) return;
               var r2 = r.map(function (v, j) { return v - x[j]; }), lf2 = lf;
@@ -602,11 +610,11 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     function fresh() { return stocks.map(function (st) { return st.left; }); }
     var g0 = fresh(); consider((function () { var b = greedy(C0.slice(), g0, [], 0, 0); return b && settle(b, g0); })());
     var g1 = fresh(); consider((function () { var b = greedy(C0.slice(), g1, [], 0, 1); return b && settle(b, g1); })());
-    var ex = exact(quick ? 3000 : 40000, quick ? 15 : 80);
+    var ex = exact(quick ? 3000 : 40000, quick ? EFFORT.quickExact : EFFORT.exact);
     consider(ex);
     if (!ex && (!quick || total <= 40)) consider(pilot());
     for (var it = 0; !ex && it < (quick ? 20 : 60); it++) {
-      if (Date.now() - t0 > budget) break;
+      if (work > budget) break;
       var lf = fresh(), b = greedy(C0.slice(), lf, [], 0.35, 0.5);
       consider(b && settle(b, lf));
     }
@@ -660,11 +668,15 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     sheet.placed.push({ pi: it.pi, x: f.x, y: f.y, l: l, w: w, rot: f.part.rot });
   }
   function fitsStock(it, st) { return orientations(it).some(function (o) { return o[0] <= st.L + 1e-9 && o[1] <= st.W + 1e-9; }); }
-  function packRun(items, stocks, kerf, sortFn, fitFn, split, pref) {
+  // `work.n` counts the steps it takes: the spaces it tries each part in, and a few more per part and per run.
+  function packRun(items, stocks, kerf, sortFn, fitFn, split, pref, work) {
     var list = items.slice().sort(sortFn), sheets = [], left = stocks.map(function (s) { return s.left; });
+    work.n += 20;
     for (var i = 0; i < list.length; i++) {
       var it = list[i], best = null;
+      work.n += 4;
       sheets.forEach(function (sh) {
+        work.n += sh.free.length;
         sh.free.forEach(function (f) {
           orientations(it).forEach(function (o) {
             if (o[0] > f.w + 1e-9 || o[1] > f.h + 1e-9) return;
@@ -708,9 +720,9 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       for (var i = 0; i < Math.min(p.qty, 300); i++) items.push({ pi: pi, l: p.len, w: p.wid, rot: !p.grain });
     });
     if (!items.length) return out;
-    var best = null, runs = 0, cap = quick ? 40 : 999, t0 = Date.now();
+    var best = null, runs = 0, cap = quick ? 40 : 999, work = { n: 0 };
     function keep(sortFn, fitFn, split, pref, list) {
-      var r = packRun(list || items, stocks, kerf, sortFn, fitFn, split, pref);
+      var r = packRun(list || items, stocks, kerf, sortFn, fitFn, split, pref, work);
       if (!r) return;
       // Try each sheet's parts on a cheaper stock size, packed on their own: one smaller sheet, or
       // several that together cost less (two half sheets can beat one full one).
@@ -720,7 +732,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         stocks.forEach(function (st, si) {
           if (st.price >= sh.st.price - 1e-9 || r.left[si] <= 0) return;
           for (var q = 0; q < SORTS.length; q++) {
-            var run = packRun(its, [Object.assign({}, st, { left: r.left[si] })], kerf, SORTS[q], FITS[0], 'short', 'area');
+            var run = packRun(its, [Object.assign({}, st, { left: r.left[si] })], kerf, SORTS[q], FITS[0], 'short', 'area', work);
             if (run && run.sheets.length * st.price < (alt ? alt.cost : sh.st.price) - 1e-9) alt = { si: si, st: st, sheets: run.sheets, cost: run.sheets.length * st.price };
           }
         });
@@ -737,13 +749,13 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
       if (runs++ >= cap) break outer;
       keep(SORTS[a], FITS[b], SPLITS[c], prefs[pf]);
     }
-    // Then shake the order: big parts still go first, but near-equals trade places.
-    // (With one stock size, stop once no packing could use fewer sheets.)
+    // Then shake the order: big parts still go first, but near-equals trade places, until the search has
+    // done the work allowed. (With one stock size, stop once no packing could use fewer sheets.)
     var area = items.reduce(function (a, x) { return a + x.l * x.w; }, 0);
     var floor = stocks.length === 1 ? Math.ceil(area / (stocks[0].L * stocks[0].W) - 1e-9) : 0;
     if (!quick && best && best.sheets.length > Math.max(1, floor)) {
       var rnd = mulberry(4242), same = function () { return 0; };
-      for (var it = 0; it < 4000 && Date.now() - t0 < 120 && best.sheets.length > floor; it++) {
+      for (var it = 0; it < 4000 && work.n < EFFORT.shake && best.sheets.length > floor; it++) {
         var noise = 0.2 + 0.6 * rnd(), keyed = items.map(function (x) { return { x: x, k: x.l * x.w * (1 + noise * (rnd() - 0.5)) }; });
         keyed.sort(function (p, q) { return q.k - p.k; });
         keep(same, FITS[it % 3], SPLITS[(it >> 2) % 4], prefs[it % prefs.length], keyed.map(function (e) { return e.x; }));
