@@ -64,6 +64,8 @@ The format is the project JSON, compressed with raw DEFLATE and base64url-encode
 
 A saved project is JSON: `{"kerf": 1, "project": {…}}`. Lengths are stored in inches whatever the display units. Opening a file keeps only fields Kerf understands and clamps the numbers, so a hand-edited file can't break the page.
 
+In the browser, projects are kept under `kerf.v1` in local storage. If that's ever damaged, by a browser add-on or a hand edit, Kerf repairs what it can and keeps the text as it was under `kerf.v1.bad`.
+
 ## Running it
 
 It's a static site: plain HTML, CSS and JavaScript in one page, with no build step.
@@ -87,7 +89,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned. More than 300 of one part is reported, not quietly left out.
 - **Same plan anywhere:** with the clock slowed to a crawl, the example, a bigger board job and a plywood cabinet come out exactly as they do at full speed.
 
-`test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, and when Kerf saves. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
+`test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, when Kerf saves, and damaged storage. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
 
 ### Files
 

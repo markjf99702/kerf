@@ -447,7 +447,58 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
 
   // ---------- storage (this browser only; projects export as files) ----------
   var LS = 'kerf.v1', DB = { projects: {}, order: [], current: null, tab: 'plan', rtab: 'plan' }, kept = false;
-  try { var raw = localStorage.getItem(LS), o = raw && JSON.parse(raw); if (o && o.projects && o.order && o.order.length) { DB = Object.assign(DB, o); kept = true; } } catch (e) { }
+  // Only Kerf writes kerf.v1, but a browser add-on, a hand edit or a half-written save could leave something the
+  // page would stop on. So what's stored is checked as it's read: each field of the wrong type is repaired, and
+  // anything that isn't a project, material, size or part at all is dropped. Values aren't clamped, the way an
+  // imported project is: these are your own. Returns null when nothing can be used, and says when it changed anything.
+  function repairDB(o) {
+    var lost = false, obj = function (v) { return !!v && typeof v === 'object' && !Array.isArray(v); };
+    var num = function (v) { return typeof v === 'number' && isFinite(v); }, str = function (v) { return typeof v === 'string'; };
+    var goodId = function (id) { return str(id) && /^[\w-]+$/.test(id) && !(id in Object.prototype); };
+    function fix(o, k, ok, to) { if (!ok(o[k])) { o[k] = to(o[k]); lost = true; } }
+    function toNum(d) { return function (v) { v = v == null || v === '' ? NaN : +v; return isFinite(v) ? v : d; }; }
+    function toStr(d) { return function (v) { return v == null ? d : String(v); }; }
+    function list(o, k) { var a = Array.isArray(o[k]) ? o[k].filter(obj) : []; if (!Array.isArray(o[k]) || a.length < o[k].length) lost = true; return (o[k] = a); }
+    function ids(a) { var seen = {}; a.forEach(function (x) { if (!goodId(x.id) || seen[x.id]) { x.id = uid(); lost = true; } seen[x.id] = 1; }); }
+    function project(p, id) {
+      if (p.id !== id) { p.id = id; lost = true; }
+      fix(p, 'name', str, toStr('Untitled project'));
+      fix(p, 'units', function (v) { return v === 'in' || v === 'mm'; }, function () { return 'in'; });
+      fix(p, 'kerf', num, toNum(0.125)); fix(p, 'trim', num, toNum(0)); fix(p, 'keep', num, toNum(12));
+      fix(p, 'cur', str, toStr('$')); fix(p, 'updated', num, toNum(0)); fix(p, 'done', obj, function () { return {}; });
+      list(p, 'materials').forEach(function (m) {
+        fix(m, 'kind', function (v) { return v === 'board' || v === 'sheet'; }, function () { return 'board'; });
+        fix(m, 'name', str, toStr('')); fix(m, 'note', str, toStr(''));
+        list(m, 'stock').forEach(function (s) { ['len', 'price', 'have'].concat(m.kind === 'sheet' ? ['wid'] : []).forEach(function (k) { fix(s, k, num, toNum(0)); }); });
+        list(m, 'parts').forEach(function (q) {
+          fix(q, 'name', str, toStr('')); ['qty', 'len'].concat(m.kind === 'sheet' ? ['wid'] : []).forEach(function (k) { fix(q, k, num, toNum(0)); });
+          if (m.kind === 'sheet') fix(q, 'grain', function (v) { return typeof v === 'boolean'; }, function (v) { return !!v; });
+        });
+        ids(m.stock); ids(m.parts);
+      });
+      ids(p.materials);
+    }
+    if (!obj(o)) return null;
+    var projects = obj(o.projects) ? o.projects : {};
+    if (projects !== o.projects) lost = true;
+    Object.keys(projects).forEach(function (id) { if (goodId(id) && obj(projects[id])) project(projects[id], id); else { delete projects[id]; lost = true; } });
+    var order = (Array.isArray(o.order) ? o.order : []).filter(function (id, i, a) { return goodId(id) && projects.hasOwnProperty(id) && a.indexOf(id) === i; });
+    if (!Array.isArray(o.order) || order.length < o.order.length) lost = true;
+    Object.keys(projects).forEach(function (id) { if (order.indexOf(id) < 0) { order.push(id); lost = true; } }); // still in Projects
+    if (!order.length) return null;
+    var tab = ['list', 'plan', 'saw'].indexOf(o.tab) >= 0 ? o.tab : 'plan', rtab = o.rtab === 'saw' ? 'saw' : 'plan';
+    return { db: { projects: projects, order: order, current: projects.hasOwnProperty(o.current) ? o.current : order[0], tab: tab, rtab: rtab }, lost: lost };
+  }
+  // What can't be read, or had to be repaired, is kept as it was under kerf.v1.bad; Kerf then starts on what it
+  // could read, or on the example.
+  try {
+    var raw = localStorage.getItem(LS);
+    if (raw != null) {
+      var got = null; try { got = repairDB(JSON.parse(raw)); } catch (e) { }
+      if (got) { DB = got.db; kept = true; }
+      if (!got || got.lost) localStorage.setItem(LS + '.bad', raw);
+    }
+  } catch (e) { }
   var P = DB.projects[DB.current];
   if (!P) { var ex = sampleProject(); DB.projects[ex.id] = ex; DB.order = [ex.id].concat(DB.order.filter(function (id) { return DB.projects[id]; })); DB.current = ex.id; P = ex; }
   // Nothing is written until something really changes; which view is showing (`view`) doesn't count until

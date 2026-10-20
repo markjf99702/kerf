@@ -58,11 +58,11 @@ page.on('console', m => { if (m.type() === 'error') problems.push(m.text()); });
 page.on('requestfailed', r => { if (r.failure()?.errorText !== 'net::ERR_ABORTED') problems.push('failed: ' + r.url()); });
 page.on('request', r => { const u = r.url(); if (!u.startsWith(base) && !u.startsWith('blob:')) problems.push('left the site: ' + u); });
 
-// Opens Kerf as a fresh page load, with `db` in storage (null for a first visit) and `hash` after the address.
-// Going by about:blank makes a link a real page load rather than a jump within the page.
+// Opens Kerf as a fresh page load, with `db` in storage (null for a first visit, or text to store as it is) and
+// `hash` after the address. Going by about:blank makes a link a real page load rather than a jump within the page.
 async function open(db, hash = '') {
   await page.goto(base + 'blank');
-  await page.evaluate(d => { localStorage.clear(); if (d) localStorage.setItem('kerf.v1', JSON.stringify(d)); }, db);
+  await page.evaluate(d => { localStorage.clear(); if (d) localStorage.setItem('kerf.v1', typeof d === 'string' ? d : JSON.stringify(d)); }, db);
   await page.goto('about:blank');
   await page.goto(base + hash);
   await page.waitForSelector('#planOut > *', { state: 'attached' });
@@ -166,6 +166,32 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   await page.reload();
   await page.waitForSelector('#planOut > *', { state: 'attached' });
   assert.equal(await page.evaluate(() => localStorage.getItem('kerf.v1')), null, 'leaving the page saved the example');
+}
+
+// Damaged storage doesn't stop the page. Text that can't be read is kept under kerf.v1.bad and Kerf starts on the
+// example; a project with fields of the wrong type opens repaired, with its values as they were.
+{
+  const before = problems.length;
+  const badCopy = () => page.evaluate(() => localStorage.getItem('kerf.v1.bad'));
+  for (const bad of ['{"projects":{"a1":{"name":"Shelves","materials":[', '{"projects":["Shelves"],"order":{"length":1},"current":"a1"}', '"kerf"']) {
+    await open(bad);
+    assert.equal(await page.textContent('.total'), '$100.64', 'the example doesn’t open over ' + bad);
+    assert.equal(await badCopy(), bad, 'the text that couldn’t be read isn’t kept');
+  }
+  const odd = project('Wrong types', [board('2×4', [{ len: '96', price: '4.28' }], [{ name: 7, qty: '2', len: '30' }]), null, 'board'], { units: 'cm', done: 'none' });
+  const raw = JSON.stringify(saved(odd));
+  await open(raw);
+  assert.equal(await page.inputValue('#pname'), 'Wrong types');
+  assert.equal(await page.textContent('.total'), '$4.28');
+  await view('saw');
+  await page.locator('#sawOut .cut[data-k]').first().click();
+  assert.equal(await page.textContent('.saw-bar b'), '1 / 2');
+  await view('list');
+  assert.deepEqual([await page.inputValue('.prow[data-pid] input[data-f="pname"]'), await page.inputValue('.prow[data-pid] input[data-f="qty"]')], ['7', '2']);
+  assert.equal(await badCopy(), raw, 'what was stored before the repair isn’t kept');
+  assert.deepEqual(problems.slice(before), [], 'damaged storage stopped the page');
+  await open(saved(project('Fine', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])])));
+  assert.equal(await badCopy(), null, 'a good save was kept as damaged');
 }
 
 // The Source menu offers every count on hand from 1 to 10, the range a planner link can carry.
