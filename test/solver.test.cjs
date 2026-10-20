@@ -114,6 +114,16 @@ console.log('boards: a big job stays quick');
   check(r.items.reduce((a, b) => a + b.pieces.length, 0) === 90, 'big job lost pieces');
 }
 
+console.log('boards: hundreds of pieces in many lengths');
+{
+  // The exact search nests a call or more per board and length; this job used to run out of stack and stop the page.
+  const stock = LUMBER.map(s => ({ len: s[0], price: s[1], have: 0 }));
+  const parts = Array.from({ length: 16 }, (_, i) => ({ len: 7 + i * 5.25, qty: 50 }));
+  let r = null;
+  try { r = K.solveBoards({ stock, parts }, { kerf: 0.125, trim: 0 }); } catch (e) { check(false, '16 lengths × 50 threw: ' + e.message); }
+  if (r) check(r.items.reduce((a, b) => a + b.pieces.length, 0) === 800 && !r.errors.length, '16 lengths × 50: not every piece is planned');
+}
+
 console.log('sheets: two half sheets beat one full sheet');
 {
   const stock = [{ len: 96, wid: 48, price: 58, have: 0 }, { len: 48, wid: 24, price: 24, have: 0 }];

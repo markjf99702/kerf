@@ -81,7 +81,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 
 - **Parsing:** lengths in each format parse to the right value.
 - **Boards:** the example project costs the known optimum, and several hundred random jobs match a brute-force search. The random jobs include offcuts on hand, end trim and two kerf widths. Boards on hand that run short are reported, not left to crash.
-- **Big jobs:** a 90-piece job finishes quickly.
+- **Big jobs:** a 90-piece job finishes quickly, and 800 pieces in 16 lengths don't run the search out of stack.
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned.
 
 `test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, the shop PDF's layout, tips, the dialogs from the keyboard, and when Kerf saves. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.

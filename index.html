@@ -558,15 +558,17 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
     // Exact, when the job is small enough: some board must hold the longest piece left, and it may as
     // well hold every other piece that still fits (moving one in from another board never costs more).
     // So branch only on those boards, and remember the cheapest finish from each state.
+    // Each board deeper nests up to n + 2 calls. Hundreds of boards of many lengths would run the
+    // browser out of stack, and a search that deep can't finish anyway, so it gives up first.
     function exact(maxStates, ms) {
       var n = L.length, w = L.map(function (l) { return l + kerf; }), memo = new Map(), states = 0, dead = false;
       var lim = []; stocks.forEach(function (st, si) { if (isFinite(st.left)) lim.push(si); });
-      function f(r, lf) {
+      function f(r, lf, depth) {
         var first = -1; for (var i = 0; i < n; i++) if (r[i] > 0) { first = i; break; }
         if (first < 0) return { cost: 0, n: 0 };
         var key = r.join(',') + (lim.length ? '|' + lim.map(function (si) { return lf[si]; }).join(',') : ''), got = memo.get(key);
         if (got) return got;
-        if (++states > maxStates || Date.now() - t0 > ms) dead = true;
+        if (++states > maxStates || Date.now() - t0 > ms || depth * (n + 2) > 2000) dead = true;
         var best = { cost: Infinity, n: Infinity };
         if (dead) return best;
         for (var si = 0; si < stocks.length && !dead; si++) {
@@ -579,7 +581,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
               for (var j = first; j < n; j++) if (r[j] > x[j] && used + w[j] <= C + 1e-9) return;
               var r2 = r.map(function (v, j) { return v - x[j]; }), lf2 = lf;
               if (isFinite(lf[si])) { lf2 = lf.slice(); lf2[si]--; }
-              var sub = f(r2, lf2), c = stocks[si].price + sub.cost;
+              var sub = f(r2, lf2, depth + 1), c = stocks[si].price + sub.cost;
               if (c < best.cost - 1e-9 || (Math.abs(c - best.cost) < 1e-9 && sub.n + 1 < best.n)) best = { cost: c, n: sub.n + 1, si: si, x: x.slice(), need: used - kerf, sub: sub };
               return;
             }
@@ -591,7 +593,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
         if (!dead) memo.set(key, best);
         return best;
       }
-      var root = f(C0.slice(), fresh());
+      var root = f(C0.slice(), fresh(), 1);
       if (dead || !isFinite(root.cost)) return null;
       var boards = [], left = fresh();
       for (var b = root; b.sub; b = b.sub) { boards.push({ si: b.si, x: b.x, need: b.need }); left[b.si]--; }
