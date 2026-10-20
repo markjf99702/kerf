@@ -254,6 +254,23 @@ await page.waitForFunction(() => /My shelves/.test(localStorage.getItem('kerf.v1
   assert.deepEqual(await names(), ['Desk', 'Typed just now'], 'an edit waiting to be saved was lost when another window saved');
 }
 
+// On a phone a sheet part takes two lines, its name across the top, so the name isn't cut to a few letters. Enter
+// still goes on to the same field of the next part, and from the last part adds one.
+{
+  await open(saved(project('Cabinet', [sheet('¾ plywood', [{ len: 96, wid: 48, price: 58 }], [{ name: 'Adjustable shelf', qty: 3, len: 28.5, wid: 11.25 }, { name: 'Left side panel', qty: 2, len: 34.5, wid: 23.25 }])])));
+  await view('list');
+  await fitsPhone('cut list with a sheet');
+  const field = (f, i) => page.locator(`.sheetmat .prow[data-pid] input[data-f="${f}"]`).nth(i);
+  assert.ok(await field('pname', 0).evaluate(i => i.scrollWidth <= i.clientWidth), 'a sheet part’s name is cut short on a phone');
+  await field('pname', 0).focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => document.activeElement.value), 'Left side panel', 'Enter didn’t go on to the next part');
+  await field('len', 1).focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('.sheetmat .prow[data-pid]').count(), 3, 'Enter on the last part didn’t add one');
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.f), 'len', 'the new part’s length doesn’t have the focus');
+}
+
 // The Source menu offers every count on hand from 1 to 10, the range a planner link can carry.
 await open(saved(project('Offcuts', [board('2×4', [{ len: 96, price: 4.28 }, { len: 40, have: 7 }], [{ name: 'Leg', qty: 2, len: 30 }])])));
 await view('list');

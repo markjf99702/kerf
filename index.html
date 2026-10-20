@@ -277,8 +277,12 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   .total{font-size:46px}
   .summary{grid-template-columns:minmax(0,1fr);padding:12px 14px}
   .steps{columns:1}
-  .sheetmat .prow{grid-template-columns:20px minmax(0,1fr) 40px 76px 76px 30px 26px;gap:4px}
   .prow{grid-template-columns:20px minmax(0,1fr) 44px 88px 28px;gap:5px}
+  /* a sheet part takes two lines: its name across the top, then quantity, length, width, grain and ✕ */
+  .sheetmat .prow{grid-template-columns:20px 44px minmax(0,1fr) minmax(0,1fr) 30px 28px;gap:4px 5px;padding:5px 0}
+  .sheetmat .prow>:nth-child(2){grid-column:2/-1}
+  .sheetmat .prow>:nth-child(3){grid-area:2/2}.sheetmat .prow>:nth-child(4){grid-area:2/3}.sheetmat .prow>:nth-child(5){grid-area:2/4}
+  .sheetmat .prow>:nth-child(6){grid-area:2/5}.sheetmat .prow>:nth-child(7){grid-area:2/6}
   .prow input{padding:6px 5px;font-size:14.5px}
   .srow,.sheetmat .srow{grid-template-columns:minmax(0,1fr) 78px 96px 28px}
   .sheetmat .srow{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 70px 96px 28px}
