@@ -33,7 +33,7 @@ Kerf reads a project as JSON: from a file (**Projects → Open a project file**)
 | `cur` | Currency sign, up to 3 characters |
 | `materials[].kind` | `"board"` (one cross-section; parts have a length) or `"sheet"` (parts have a length and a width) |
 | `materials[].name`, `note` | Shown as the material's title and subtitle |
-| `stock[]` | Sizes to buy or already on hand: `len` (and `wid` for sheets) in inches, `price` each, `have` = pieces on hand (0 = buy; on-hand pieces are free and used first; at most 10) |
+| `stock[]` | Sizes to buy or already on hand: `len` (and `wid` for sheets) in inches, `price` each, `have` = pieces on hand (0 = buy; on-hand pieces are free and used whenever they save buying; at most 10) |
 | `parts[]` | `name`, `qty` (whole number 1–500), `len`, and for sheets `wid` and `grain` |
 | `grain` | `true` keeps the grain along the part's `len`, and Kerf won't turn the part |
 

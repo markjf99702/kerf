@@ -994,7 +994,7 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
           '<button class="icon" type="button" data-a="delstock" aria-label="Remove this size">✕</button></div>';
       });
       h += '<div class="addrow"><button class="lbtn" type="button" data-a="addstock">+ Size to buy</button><button class="lbtn" type="button" data-a="addhave">+ Offcut I already have</button></div>' +
-        '<p class="hint">Prices start as examples — set them to what your store charges. Offcuts you have are used first, for free.</p></div></details></article>';
+        '<p class="hint">Prices start as examples — set them to what your store charges. Offcuts you have are free, and used whenever they save buying.</p></div></details></article>';
     });
     var pre = PRESETS[U];
     h += '<div class="addmat"><span class="lbl">Add material</span>' + pre.board.map(function (b, i) { return '<button class="pbtn" type="button" data-add="board:' + i + '">' + esc(b.name) + '</button>'; }).join('') + pre.sheet.map(function (b, i) { return '<button class="pbtn" type="button" data-add="sheet:' + i + '">' + esc(b.name) + '</button>'; }).join('') + '<button class="pbtn" type="button" data-add="board:x">Other board</button><button class="pbtn" type="button" data-add="sheet:x">Other sheet</button></div>';

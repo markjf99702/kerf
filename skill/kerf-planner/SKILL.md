@@ -68,7 +68,7 @@ Stock sizes and prices:
 - Offer what's usual for their region (the reference has US and metric sizes, with rough prices).
 - Include more than one length or sheet size where it's sold. Kerf picks the cheapest mix, and half sheets or longer boards often win.
 - Say plainly that prices are examples to update.
-- Ask about offcuts they already have. Kerf uses them first, for free (`"have": N`).
+- Ask about offcuts they already have. Kerf uses them whenever they save buying, for free (`"have": N`).
 - For construction lumber, suggest buying a spare board for knots and warps rather than quietly padding the list.
 - Leave end trim at 0 unless the ends are rough or split, which is common with framing lumber and hardwood; then use ¼–½″ per end, and say so.
 
