@@ -19,13 +19,27 @@ function list(name) {
   return src.slice(i, src.indexOf('\n  ];', i) + 5);
 }
 function line(start) { const i = src.indexOf(start); return src.slice(i, src.indexOf('\n', i)); }
-const K = new Function([
+const SOLVER = [
   "var U = 'in';",
   line('var VULGAR = '), line('var EFFORT = '), line('var SPLITS = '), line('var MINR = '), list('SORTS'), list('FITS'),
   ...['esc', 'sixteenths', 'mmOf', 'fmt', 'fmtH', 'parseLen', 'mulberry', 'bestFill', 'solveBoards', 'orientations', 'newSheet',
     'placeIn', 'fitsStock', 'packRun', 'freeArea', 'evalSheets', 'sheetSteps', 'solveSheets'].map(fn),
+];
+const K = new Function([
+  ...SOLVER,
   'return { parseLen: parseLen, fmt: fmt, fmtH: fmtH, solveBoards: solveBoards, solveSheets: solveSheets, units: function (u) { U = u; } };'
 ].join('\n'))();
+// The page's own solveAll, with the plans it keeps between edits, noting the id of each material it plans (a full solve:
+// the quick ones that look for tips aren't plans). `forget` drops the kept plans, as opening the page afresh does.
+function planner() {
+  return new Function([
+    ...SOLVER, 'var P = null, RES = null, planned = [];', line('var PLANS = '), ...['lastIsLeft', 'cfg', 'solveMat', 'planInputs', 'solveAll'].map(fn),
+    'var boards = solveBoards, sheets = solveSheets;',
+    'solveBoards = function (m, c, quick) { if (!quick) planned.push(m.id); return boards(m, c, quick); };',
+    'solveSheets = function (m, c, quick) { if (!quick) planned.push(m.id); return sheets(m, c, quick); };',
+    'return { solve: function (p) { P = p; U = p.units; planned = []; return { res: solveAll(), planned: planned }; }, forget: function () { PLANS = {}; } };'
+  ].join('\n'))();
+}
 
 let failed = 0;
 function check(ok, what) { if (!ok) { failed++; console.log('  FAIL ' + what); } }
@@ -215,6 +229,74 @@ console.log('the same plan on a slow or busy device');
     check(slow === usual, `${what}: a slow clock changed the plan\n    usual ${usual.slice(0, 120)}\n    slow  ${slow.slice(0, 120)}`);
     if (what === 'the example 2×4s') check(slow.startsWith('42.64 '), `the example 2×4s cost $${slow.split(' ')[0]} with a slow clock, want $42.64`);
   }
+}
+
+console.log('plans kept between edits');
+{
+  // Kerf keeps each material's plan until something it's worked out from changes. In a project with a board and a
+  // sheet material, each edit below plans again only the materials listed, and what the page has is the plan a fresh
+  // start finds (every search does a set amount of work, so it's the same plan), pointing at the project's own sizes
+  // and parts. The edits follow on from each other, so a plan is kept across several.
+  const page = planner(), fresh = planner();
+  const p = { name: 'Garage shelves', units: 'in', kerf: 0.125, trim: 0, keep: 12, cur: '$', materials: [
+    { id: 'studs', kind: 'board', name: '2×4', note: '1½ × 3½ in', stock: LUMBER.map((s, i) => ({ id: 'b' + i, len: s[0], price: s[1], have: 0 })),
+      parts: [{ id: 'leg', name: 'Leg', qty: 4, len: 72 }, { id: 'rail', name: 'Rail', qty: 8, len: 48 }, { id: 'beam', name: 'Beam', qty: 1, len: 200 }] },
+    { id: 'ply', kind: 'sheet', name: '¾ plywood', note: '23/32 in actual', stock: [{ id: 's0', len: 96, wid: 48, price: 58, have: 0 }, { id: 's1', len: 48, wid: 24, price: 21, have: 0 }],
+      parts: [{ id: 'shelf', name: 'Shelf', qty: 4, len: 47.75, wid: 23.75, grain: true }, { id: 'top', name: 'Top', qty: 1, len: 100, wid: 30, grain: true }] },
+  ] };
+  const [studs, ply] = p.materials;
+  // What the page shows from a plan, and whether it points at this project's own material, sizes and parts.
+  const own = (yes, id) => (yes ? id : 'another copy of ' + id);
+  const shown = (res, proj) => JSON.stringify([res.cost, res.boards, res.sheets, res.cuts, res.boardYield, res.boardKerf, res.sheetYield, res.mats.map((r, mi) => {
+    const m = proj.materials[mi];
+    return [own(r.mat === m, m.id), r.cost, r.errors.map(e => [e.pi, e.max, e.pi < 0 || own(e.part === m.parts[e.pi], m.parts[e.pi].id)]),
+      r.items.map(it => [own(m.stock.includes(it.stock), it.stock.id), it.price, it.cap, it.trim, it.need, it.offcut, it.pieces, it.L, it.W, it.placed, it.spare,
+        it.steps && it.steps.map(s => [s.type, s.at, s.on, s.line, s.gives && [s.gives.it.pi, s.gives.l, s.gives.w, s.gives.rot]])])];
+  })]);
+  const edits = [
+    ['opening the project', () => {}, ['studs', 'ply']],
+    ['renaming a sheet part', () => { ply.parts[0].name = 'Adjustable shelf'; }, []],
+    ['renaming a board part', () => { studs.parts[0].name = 'Long leg'; }, []],
+    ['renaming a part too big for any size', () => { ply.parts[1].name = 'Bench top'; studs.parts[2].name = 'Ridge beam'; }, []],
+    ['renaming the materials, and a note', () => { studs.name = 'Stud'; ply.name = 'Birch ply'; ply.note = 'from the yard'; }, []],
+    ['the project’s name, currency and offcuts worth keeping', () => { p.name = 'Shed shelves'; p.cur = '€'; p.keep = 18; }, []],
+    ['a sheet part’s count', () => { ply.parts[0].qty = 6; }, ['ply']],
+    ['a sheet part’s width', () => { ply.parts[0].wid = 22; }, ['ply']],
+    ['a sheet part’s grain', () => { ply.parts[0].grain = false; }, ['ply']],
+    ['a board part’s length', () => { studs.parts[0].len = 70.5; }, ['studs']],
+    ['a board part’s count', () => { studs.parts[1].qty = 6; }, ['studs']],
+    ['a sheet size’s price', () => { ply.stock[0].price = 61; }, ['ply']],
+    ['a board size’s length', () => { studs.stock[3].len = 180; }, ['studs']],
+    ['an offcut on hand', () => { studs.stock.push({ id: 'b4', len: 40, price: 0, have: 2 }); }, ['studs']],
+    ['a sheet size taken away', () => { ply.stock.pop(); }, ['ply']],
+    ['the kerf', () => { p.kerf = 0.09375; }, ['studs', 'ply']],
+    ['trimming each board end', () => { p.trim = 0.25; }, ['studs']],
+    ['millimetres, which a sheet’s steps are written in', () => { p.units = 'mm'; }, ['ply']],
+    ['back to inches', () => { p.units = 'in'; }, ['ply']],
+    ['a new part with no length yet', () => { studs.parts.push({ id: 'cleat', name: '', qty: 1, len: 0 }); }, []],
+    ['its name and count', () => { studs.parts[3].name = 'Cleat'; studs.parts[3].qty = 3; }, []],
+    ['its length', () => { studs.parts[3].len = 30; }, ['studs']],
+    ['a sheet part taken away', () => { ply.parts.pop(); }, ['ply']],
+  ];
+  let proj = p;
+  const run = (what, want) => {
+    const got = page.solve(proj);
+    check(JSON.stringify(got.planned) === JSON.stringify(want), `${what} planned ${JSON.stringify(got.planned)}, want ${JSON.stringify(want)}`);
+    const copy = JSON.parse(JSON.stringify(proj));
+    fresh.forget();
+    const plan = shown(got.res, proj), anew = shown(fresh.solve(copy).res, copy);
+    check(plan === anew, `after ${what}, the page’s plan isn’t the one a fresh start finds\n    kept  ${plan.slice(0, 160)}\n    fresh ${anew.slice(0, 160)}`);
+    return got.res;
+  };
+  for (const [what, edit, want] of edits) { edit(); run(what, want); }
+  // Another window's save brings a new copy of the whole project: nothing is planned, and the plan points at the copy.
+  proj = JSON.parse(JSON.stringify(p));
+  const res = run('another window’s copy of the project', []);
+  // A size the plan uses, taken away there and put back the same but under a new id: the plan points at the new one.
+  const used = proj.materials.map((m, mi) => m.stock.findIndex(s => s.id === res.mats[mi].items[0].stock.id));
+  proj = JSON.parse(JSON.stringify(proj));
+  proj.materials.forEach((m, mi) => { m.stock[used[mi]].id += ' again'; });
+  run('another window’s copy with a size put back', []);
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall good');

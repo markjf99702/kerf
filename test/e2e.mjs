@@ -406,6 +406,58 @@ assert.match(await page.textContent('.saw-bar b'), /^0 \//);
   assert.ok(longest < 200, `looking for tips held the page up for ${Math.round(longest)} ms`);
 }
 
+// An edit plans again only the materials it changes. In a copy of the page that notes each material it plans (a full
+// solve; the quick ones that look for tips aren't plans), a part's count or length plans only its own material, and
+// renaming a part plans nothing, yet the plan, the steps at the saw and the cut list's notes all use the new name.
+// A reload plans everything afresh and finds the same plan, to the last cut.
+{
+  const counted = kerfSource.replace(/function solve(Boards|Sheets)\(mat, cfg, quick\) \{/g, '$& if (!quick) planned.push(mat.name);')
+    .replace('<script>(function () {', '<script>var planned = [];</script>$&');
+  assert.equal(counted.split('planned.push(').length, 3, 'the solvers aren’t where this test looks for them');
+  const counting = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+  try {
+    const cp = await counting.newPage();
+    cp.on('pageerror', e => problems.push('counting: ' + e.message));
+    await cp.route(base, r => r.fulfill({ contentType: 'text/html; charset=utf-8', body: counted }));
+    const shelves = project('Shelves', [
+      board('2×4', [{ len: 96, price: 4.28 }, { len: 120, price: 6.38 }], [{ name: 'Leg', qty: 4, len: 72 }, { name: 'Rail', qty: 8, len: 48 }]),
+      sheet('¾ plywood', [{ len: 96, wid: 48, price: 58 }, { len: 48, wid: 24, price: 21 }], [{ name: 'Shelf', qty: 4, len: 47.75, wid: 23.75 }, { name: 'Top', qty: 1, len: 100, wid: 30 }])]);
+    await cp.goto(base + 'blank');
+    await cp.evaluate(d => localStorage.setItem('kerf.v1', JSON.stringify(d)), { ...saved(shelves), tab: 'list' });
+    await cp.goto(base);
+    await cp.waitForSelector('#planOut > *', { state: 'attached' });
+    const newlyPlanned = () => cp.evaluate(() => planned.splice(0));
+    assert.deepEqual(await newlyPlanned(), ['2×4', '¾ plywood'], 'opening the project doesn’t plan each material once');
+    const edit = async (f, i, value) => {
+      await cp.evaluate(() => { window.redrawn = new Promise(done => new MutationObserver((m, o) => { o.disconnect(); done(); }).observe(document.getElementById('planOut'), { childList: true })); });
+      await cp.fill(`.prow[data-pid] input[data-f="${f}"] >> nth=${i}`, value);
+      await cp.evaluate(() => Promise.race([window.redrawn, new Promise((ok, no) => setTimeout(() => no(new Error('the plan wasn’t drawn again')), 10000))]));
+      return newlyPlanned();
+    };
+    assert.deepEqual(await edit('qty', 2, '5'), ['¾ plywood'], 'a shelf’s count planned more than the plywood');
+    assert.deepEqual(await edit('len', 0, '70 1/2'), ['2×4'], 'a leg’s length planned more than the 2×4s');
+    assert.deepEqual(await edit('pname', 0, 'Long leg'), [], 'renaming a part planned again');
+    assert.deepEqual(await edit('pname', 3, 'Bench top'), [], 'renaming a part too big for any sheet planned again');
+    assert.match(await cp.textContent('#planOut .mdiag'), /Long leg · 4 × 70/, 'the plan has the old name');
+    assert.match(await cp.textContent('#sawOut'), /A Long leg/, 'the steps at the saw have the old name');
+    assert.match(await cp.textContent('.sheetmat .perr'), /^Bench top \(100" × 30"\) won’t fit/, 'the cut list has the old name');
+    // Both seen on the Plan tab: a plan drawn while the cut list is showing is drawn again to fit once the tab opens.
+    const plan = () => cp.evaluate(() => [...document.getElementById('planOut').children].filter(c => c.id !== 'tips').map(c => c.outerHTML).join('') + document.getElementById('sawOut').innerHTML);
+    await cp.click('#tabs button[data-t="plan"]');
+    const kept = await plan();
+    await cp.waitForFunction(() => { const s = localStorage.getItem('kerf.v1') || ''; return s.includes('Bench top') && s.includes('"tab":"plan"'); }, null, { timeout: 5000 });
+    await cp.reload();
+    await cp.waitForSelector('#planOut > *', { state: 'attached' });
+    assert.deepEqual(await newlyPlanned(), ['2×4', '¾ plywood'], 'a reload didn’t plan afresh');
+    const anew = await plan();
+    if (anew !== kept) {
+      let i = 0; while (anew[i] === kept[i]) i++;
+      const near = s => '…' + s.slice(Math.max(0, i - 100), i + 100) + '…';
+      assert.fail(`the plan kept between edits isn’t the one a fresh start finds:\n  kept  ${near(kept)}\n  fresh ${near(anew)}`);
+    }
+  } finally { await counting.close(); }
+}
+
 // Deleting takes two separate taps: a double tap only asks.
 {
   const keep = project('Keep me', [board('2×4', [{ len: 96, price: 4.28 }], [{ name: 'Leg', qty: 2, len: 30 }])]);

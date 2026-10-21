@@ -904,8 +904,34 @@ textarea{width:100%;min-height:110px;font:13px var(--mono);background:var(--surf
   var RES = null, TIPS = [], GEN = 0;
   function cfg() { return { kerf: P.kerf, trim: P.trim }; }
   function solveMat(m, quick) { return m.kind === 'sheet' ? solveSheets(m, cfg(), quick) : solveBoards(m, cfg(), quick); }
+  // Everything a material's plan is worked out from: its sizes with their prices and counts on hand, its parts'
+  // sizes, counts and grain (and where each is in the list), the kerf, and the end trim for boards or, for sheets,
+  // the units their steps are written in. A part with no size or count yet isn't planned, so it isn't here either.
+  function planInputs(m) {
+    var sheet = m.kind === 'sheet', parts = [];
+    m.parts.forEach(function (p, pi) { if (p.len > 0 && p.qty > 0 && (!sheet || p.wid > 0)) parts.push(sheet ? [pi, p.len, p.wid, p.qty, !!p.grain] : [pi, p.len, p.qty]); });
+    return JSON.stringify([m.kind, P.kerf, sheet ? U : P.trim, m.stock.map(function (s) { return sheet ? [s.len, s.wid, s.price, s.have] : [s.len, s.price, s.have]; }), parts]);
+  }
+  // Each material's plan is kept with what it was worked out from, and used again until some of that changes, so
+  // renaming a part, changing the currency or editing another material plans nothing again. Every search does a set
+  // amount of work, not a set time, so solving again would only find the same plan while the page waited.
+  var PLANS = {};
   function solveAll() {
-    var mats = P.materials.map(function (m) { return solveMat(m); });
+    var last = PLANS; PLANS = {};
+    var mats = P.materials.map(function (m) {
+      var key = planInputs(m), got = last[m.id];
+      if (got && got.key === key && !PLANS[m.id]) {
+        // The same plan, pointing at this material's own sizes and parts: another window's save brings new copies.
+        got.r.mat = m;
+        got.r.items.forEach(function (it, k) { it.stock = m.stock[got.at[k]]; });
+        got.r.errors.forEach(function (e) { if (e.pi >= 0) e.part = m.parts[e.pi]; });
+      } else {
+        var r = solveMat(m);
+        got = { key: key, r: r, at: r.items.map(function (it) { return m.stock.indexOf(it.stock); }) };
+      }
+      PLANS[m.id] = got;
+      return got.r;
+    });
     var cost = 0, partLen = 0, kerfLen = 0, stockLen = 0, boards = 0, sheets = 0, partArea = 0, sheetArea = 0, cuts = 0;
     mats.forEach(function (r) {
       cost += r.cost;
