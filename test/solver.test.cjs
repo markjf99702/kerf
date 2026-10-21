@@ -263,9 +263,17 @@ console.log('plans kept between edits');
     ['a sheet part’s count', () => { ply.parts[0].qty = 6; }, ['ply']],
     ['a sheet part’s width', () => { ply.parts[0].wid = 22; }, ['ply']],
     ['a sheet part’s grain', () => { ply.parts[0].grain = false; }, ['ply']],
+    ['a sheet part’s length', () => { ply.parts[0].len = 46; }, ['ply']],
     ['a board part’s length', () => { studs.parts[0].len = 70.5; }, ['studs']],
     ['a board part’s count', () => { studs.parts[1].qty = 6; }, ['studs']],
+    ['a board size’s price', () => { studs.stock[0].price = 4.5; }, ['studs']],
+    ['three of a board size on hand', () => { studs.stock[1].have = 3; }, ['studs']],
+    ['buying that size again', () => { studs.stock[1].have = 0; }, ['studs']],
     ['a sheet size’s price', () => { ply.stock[0].price = 61; }, ['ply']],
+    ['a sheet size’s width', () => { ply.stock[1].wid = 30; }, ['ply']],
+    ['a sheet size’s length', () => { ply.stock[1].len = 60; }, ['ply']],
+    ['a sheet on hand', () => { ply.stock[0].have = 1; }, ['ply']],
+    ['buying that sheet again', () => { ply.stock[0].have = 0; }, ['ply']],
     ['a board size’s length', () => { studs.stock[3].len = 180; }, ['studs']],
     ['an offcut on hand', () => { studs.stock.push({ id: 'b4', len: 40, price: 0, have: 2 }); }, ['studs']],
     ['a sheet size taken away', () => { ply.stock.pop(); }, ['ply']],
@@ -277,6 +285,11 @@ console.log('plans kept between edits');
     ['its name and count', () => { studs.parts[3].name = 'Cleat'; studs.parts[3].qty = 3; }, []],
     ['its length', () => { studs.parts[3].len = 30; }, ['studs']],
     ['a sheet part taken away', () => { ply.parts.pop(); }, ['ply']],
+    // A part's place in the list is how the plan finds its letter and name, so a part that moves up plans again.
+    ['an empty board part, and another after it', () => { studs.parts.push({ id: 'gap', name: '', qty: 1, len: 0 }, { id: 'brace', name: 'Brace', qty: 2, len: 20 }); }, ['studs']],
+    ['the empty board part taken away', () => { studs.parts.splice(4, 1); }, ['studs']],
+    ['an empty sheet part, and another after it', () => { ply.parts.push({ id: 'gap2', name: '', qty: 1, len: 0, wid: 0, grain: true }, { id: 'back', name: 'Back', qty: 1, len: 30, wid: 20, grain: true }); }, ['ply']],
+    ['the empty sheet part taken away', () => { ply.parts.splice(1, 1); }, ['ply']],
   ];
   let proj = p;
   const run = (what, want) => {

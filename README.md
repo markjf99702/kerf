@@ -46,7 +46,7 @@ The layout's cut tree becomes the numbered rip and crosscut steps. Sheet packing
 
 Every search stops after a set number of steps, not after a set time, so a project gets the same plan on a fast laptop and a slow phone, and the ticks at the saw stay put. Sheets take the longest: a ¾ plywood job of up to 50 pieces takes about a tenth of a second on a laptop, and about a third of a second (at most three quarters) on a phone five times slower.
 
-Each material's plan is kept until something it was worked out from changes: its sizes, prices and offcuts on hand, its parts' sizes, counts and grain, the kerf, and for boards the end trim. So renaming a part, changing the currency or editing another material doesn't plan it again, and the plan redraws at once.
+Each material's plan is kept until something it was worked out from changes: its sizes, prices and offcuts on hand, its parts' sizes, counts and grain, the kerf, and the end trim for boards or the units a sheet's steps are written in. So renaming a part, changing the currency or editing another material doesn't plan it again, and the plan redraws at once.
 
 ## Planning a build with Claude
 
@@ -90,7 +90,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - **Big jobs:** a 90-piece job finishes quickly, and 800 pieces in 16 lengths don't run the search out of stack.
 - **Sheets:** in 200 random jobs, every part is on its sheet at the right size, no two parts overlap once the kerf is counted, and grain-locked parts are never turned. More than 300 of one part is reported, not quietly left out. Two ¾ plywood jobs that cost more when the shuffle had half the work come out as cheap as the old time limit found them.
 - **Same plan anywhere:** with the clock slowed to a crawl, the example, a bigger board job and a plywood cabinet come out exactly as they do at full speed.
-- **Plans kept between edits:** in a project with a board and a sheet material, each of two dozen edits plans again only the materials it changes (nothing for a rename, only the plywood for a part's grain, both for the kerf), and the plan Kerf keeps is the one a fresh start finds, down to the sizes and parts it points at, also when another window's save brings a new copy of the project.
+- **Plans kept between edits:** in a project with a board and a sheet material, each of 35 edits plans again only the materials it changes (nothing for a rename, only the plywood for a part's grain, both for the kerf), and the plan Kerf keeps is the one a fresh start finds, down to the sizes and parts it points at, also when another window's save brings a new copy of the project.
 
 `test/e2e.mjs` uses the real page in Chromium at phone size (it needs Playwright). It opens the example and checks its total, opens a link and a project file made by the kerf-planner skill (and broken links), ticks cuts at the saw and reloads, checks the steps for boards that need a last cut or end trim, the plan's warnings and drawings, that an edit plans again only the material it changes (renaming a part plans nothing, and the new name shows in the plan, at the saw and in the cut list) and that a reload then finds the same plan, the shop PDF's layout, tips, the dialogs from the keyboard, when Kerf saves, two windows open at once, and damaged storage. Throughout, nothing may scroll sideways, throw an error or load from elsewhere, and at the end it opens offline.
 
